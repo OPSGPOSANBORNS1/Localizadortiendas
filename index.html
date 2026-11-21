@@ -1,0 +1,2314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Localizador de Tienda Óptima</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<style>
+  :root{
+    --bg:#F7F7F7;
+    --card:#FFFFFF;
+    --line:#EEEEEE;
+    --text:#393E46;
+    --muted:#929AAB;
+    --optimo:#2E7D32;
+    --alerta:#B8860B;
+    --critico:#B03A2E;
+    --accent:#ea0028;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif; font-size:14px;}
+  header{background:#FFFFFF; color:var(--text); padding:14px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; border-bottom:3px solid var(--accent);}
+  header h1{font-size:18px; margin:0; font-weight:600; letter-spacing:.2px; color:var(--text);}
+  header .sub{color:var(--muted); font-size:12.5px;}
+  .header-right{display:flex; align-items:center; gap:14px;}
+  #storeCount{font-size:12.5px; color:var(--muted);}
+  .wrap{max-width:1180px; margin:0 auto; padding:22px 20px 60px;}
+  .tabs{display:flex; gap:8px; margin-bottom:18px; overflow-x:auto;}
+  .tab-btn{padding:9px 16px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--text); cursor:pointer; font-size:13.5px; font-weight:600; white-space:nowrap;}
+  .tab-btn.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px 20px; margin-bottom:16px;}
+  .card h2{font-size:14px; margin:0 0 12px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); font-weight:700;}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  input[type=text], textarea, input[type=number]{border:1px solid var(--line); background:#FBFBFB; border-radius:7px; padding:9px 11px; font-size:13.5px; color:var(--text); font-family:inherit;}
+  input[type=text]{flex:1; min-width:220px;}
+  textarea{width:100%; min-height:120px; resize:vertical;}
+  button{border:none; background:var(--accent); color:#fff; padding:10px 18px; border-radius:7px; font-size:13.5px; font-weight:600; cursor:pointer;}
+  button:hover{filter:brightness(0.92);}
+  button.secondary{background:#fff; color:var(--text); border:1px solid var(--line);}
+  button:disabled{opacity:.5; cursor:not-allowed;}
+  button.small{padding:6px 12px; font-size:12.5px;}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th{text-align:left; color:var(--muted); font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:.4px; padding:8px 10px; border-bottom:2px solid var(--line);}
+  td{padding:9px 10px; border-bottom:1px solid var(--line);}
+  tr:hover td{background:#FAFAFA;}
+  .badge{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; color:#fff;}
+  .badge.optimo{background:var(--optimo);}
+  .badge.alerta{background:var(--alerta);}
+  .badge.critico{background:var(--critico);}
+  .badge.local{background:#2E86AB;}
+  .badge.foraneo{background:#6B5B95;}
+  .rank1{background:#F1F8F2 !important; font-weight:700;}
+  .muted{color:var(--muted); font-size:12px;}
+  .status{font-size:12.5px; margin-top:8px; min-height:16px;}
+  .status.err{color:var(--critico);}
+  .status.ok{color:var(--optimo);}
+  .thresholds{display:flex; gap:18px; align-items:center; flex-wrap:wrap;}
+  .thresholds label{font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:6px;}
+  .thresholds input{width:70px;}
+  .file-btn{border:1px dashed var(--muted); background:#fff; padding:8px 14px; border-radius:7px; font-size:12.5px; cursor:pointer;}
+  .batch-item{border:1px solid var(--line); border-radius:8px; margin-bottom:10px; overflow:hidden;}
+  .batch-item summary{padding:10px 14px; cursor:pointer; font-weight:600; font-size:13px; display:flex; justify-content:space-between; background:#FBFBFB;}
+  .batch-item[open] summary{border-bottom:1px solid var(--line);}
+  .spinner{display:inline-block; width:12px; height:12px; border:2px solid var(--line); border-top-color:var(--text); border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:6px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  select{border:1px solid var(--line); background:#FBFBFB; border-radius:7px; padding:9px 11px; font-size:13.5px; color:var(--text); font-family:inherit;}
+  .store-picker{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:8px; max-height:260px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; padding:10px; background:#FBFBFB;}
+  .store-check{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12.5px; padding:6px 4px; border-bottom:1px solid var(--line);}
+  .store-check .sc-name{font-weight:600;}
+  .store-check .sc-meta{color:var(--muted); font-size:11.5px;}
+  #compareMap, #compareMapBT{width:100%; height:380px; border-radius:10px; border:1px solid var(--line); margin-bottom:16px;}
+  .legend-dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px;}
+  .chip{display:inline-flex; align-items:center; gap:6px; background:#EEF3F1; border:1px solid var(--line); border-radius:20px; padding:5px 6px 5px 12px; font-size:12.5px; font-weight:600;}
+  .chip button{background:transparent; color:var(--muted); border:none; padding:2px 6px; font-size:13px; line-height:1; border-radius:50%; cursor:pointer;}
+  .chip button:hover{background:var(--line); color:var(--critico);}
+  .sc-add{border:1px solid var(--line); background:#fff; color:var(--text); padding:4px 10px; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer;}
+  .sc-add.added{background:var(--optimo); color:#fff; border-color:var(--optimo);}
+  .sheet-picker{display:none; margin-top:10px;}
+  .sheet-picker.show{display:flex;}
+  .dc-tag{display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#EEF3F1; color:var(--text); border:1px solid var(--line);}
+  .badge.neutral{background:#929AAB;}
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px;}
+  .kpi{border:1px solid var(--line); border-radius:8px; padding:8px 10px; background:#FBFBFB;}
+  .kpi b{display:block; font-size:18px; margin-top:2px;}
+  .dc-win{background:#F1F8F2 !important; font-weight:700; color:var(--optimo);}
+
+  @media (max-width: 640px){
+    header{padding:10px 14px; gap:8px;}
+    header h1{font-size:15px;}
+    header .sub{font-size:11px;}
+    .wrap{padding:14px 10px 40px;}
+    .tabs{gap:6px; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; padding-bottom:4px;}
+    .tab-btn{flex:0 0 auto; padding:8px 12px; font-size:12.5px; white-space:nowrap;}
+    .card{padding:14px 12px; border-radius:8px;}
+    .card h2{font-size:12.5px;}
+    .row{gap:8px;}
+    input[type=text]{min-width:0; width:100%;}
+    select{width:100%;}
+    .row > input[type=text], .row > select{flex:1 1 100%;}
+    button{width:100%; padding:11px 14px;}
+    button.small{width:auto; padding:8px 12px;}
+    .row > button.secondary.small{flex:1 1 auto; width:auto;}
+    table{font-size:12px;}
+    .card > table, .card table{display:block; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch;}
+    th, td{padding:7px 8px;}
+    .store-picker{grid-template-columns:1fr; max-height:220px;}
+    .store-check{padding:8px 4px;}
+    #compareMap, #compareMapBT{height:260px;}
+    .thresholds{gap:10px;}
+    .thresholds input{width:60px;}
+    .chip{font-size:11.5px; padding:4px 4px 4px 10px;}
+    .batch-item summary{font-size:12px; padding:9px 10px;}
+  }
+  @media (max-width: 400px){
+    header{flex-direction:column; align-items:flex-start;}
+    .header-right{width:100%; justify-content:space-between;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Localizador de Tiendas</h1>
+    <div class="sub">Grupo Sanborns</div>
+  </div>
+  <div class="header-right">
+    <div id="storeCount">0 tiendas cargadas</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="individual">Operaciones ST</button>
+    <button class="tab-btn" data-tab="bigticket">Bigticket</button>
+    <button class="tab-btn" data-tab="alertas">Alertas</button>
+    <button class="tab-btn" data-tab="tiendas">Base de tiendas</button>
+  </div>
+
+  <!-- INDIVIDUAL -->
+  <div class="panel active" id="panel-individual">
+    <div class="card">
+      <h2>Domicilio del cliente</h2>
+      <div class="row">
+        <input type="text" id="addrInput" placeholder="Dirección completa, código postal, o 'lat,lng' (ej: 19.4326,-99.1332)">
+        <select id="portalFilterIndividual"><option value="">Todos los portales</option></select>
+        <button id="btnBuscar">Buscar</button>
+      </div>
+      <div class="status" id="statusIndividual"></div>
+      <div class="muted" id="resolvedAddr" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Comparar tiendas por ruta real</h2>
+      <div class="row" style="margin-bottom:10px;">
+        <input type="text" id="storeSearchDash" placeholder="Buscar por número o nombre de tienda...">
+        <select id="portalFilterDash"><option value="">Todos los portales</option></select>
+        <button class="secondary small" id="btnSelectAll">Agregar visibles</button>
+        <button class="secondary small" id="btnSelectNone">Quitar selección</button>
+      </div>
+      <div id="selectedChips" class="row" style="margin-bottom:10px; display:none;"></div>
+      <div class="store-picker" id="storePicker"></div>
+      <div class="row" style="margin-top:14px;">
+        <button id="btnCompare">Comparar seleccionadas</button>
+        <button class="secondary small" id="btnExportCompare" disabled>Exportar comparativo (CSV)</button>
+        <span class="status" id="statusCompare"></span>
+      </div>
+    </div>
+
+    <div class="card" id="compareCard" style="display:none;">
+      <h2>Mapa</h2>
+      <div id="compareMap"></div>
+      <div class="muted">
+        <span class="legend-dot" style="background:#2E86AB;"></span>Cliente&nbsp;&nbsp;
+        <span class="legend-dot" style="background:#2E7D32;"></span>Óptimo&nbsp;&nbsp;
+        <span class="legend-dot" style="background:#B8860B;"></span>Alerta&nbsp;&nbsp;
+        <span class="legend-dot" style="background:#B03A2E;"></span>Crítico
+      </div>
+    </div>
+
+    <div class="card" id="compareResultsCard" style="display:none;">
+      <h2>Comparativo de distancia y tiempo (ruta real)</h2>
+      <table>
+        <thead><tr><th>#</th><th>Tienda</th><th>Portal</th><th>Distancia real</th><th>Tiempo estimado</th><th>Estatus</th></tr></thead>
+        <tbody id="compareBody"></tbody>
+      </table>
+    </div>
+
+    <div class="card" id="resultCard" style="display:none;">
+      <h2>Resultado — tiendas más cercanas por ruta real</h2>
+      <table>
+        <thead><tr><th>#</th><th>No.</th><th>Tienda</th><th>Portal</th><th>Distancia (ruta)</th><th>Tiempo</th><th>Estatus</th></tr></thead>
+        <tbody id="resultBody"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Varios domicilios (lote)</h2>
+      <textarea id="batchInput" placeholder="Una dirección, CP o lat,lng por línea&#10;06700&#10;Av. Insurgentes Sur 123, CDMX&#10;19.3910,-99.1650"></textarea>
+      <div class="row" style="margin-top:10px;">
+        <button id="btnBatch">Procesar lote</button>
+        <button class="secondary small" id="btnExportBatch" disabled>Exportar resultados (CSV)</button>
+        <span class="status" id="statusBatch"></span>
+      </div>
+    </div>
+
+    <div class="card" id="batchResultsCard" style="display:none;">
+      <h2>Resultados del lote (ruta real)</h2>
+      <div id="batchResults"></div>
+    </div>
+  </div>
+
+  <!-- ALERTAS -->
+  <div class="panel" id="panel-alertas">
+    <div class="card">
+      <h2>Pedidos a cotizar</h2>
+      <div class="row">
+        <label class="file-btn">Subir archivo (.xlsx)<input type="file" id="fileInputConcilia" accept=".xlsx,.xls" style="display:none;"></label>
+        <label class="muted" style="display:flex; align-items:center; gap:6px;">Volumen por defecto (M3) <input type="number" id="volDefaultAl" step="0.001" min="0" style="width:100px;"></label>
+        <label class="muted" style="display:flex; align-items:center; gap:6px;">Umbral % venta <input type="number" id="umbralAl" value="10" step="0.5" min="0" style="width:70px;"></label>
+        <button id="btnProcesarAl" disabled>Procesar</button>
+        <button class="secondary small" id="btnDetenerAl" style="display:none;">Detener</button>
+      </div>
+      <div class="muted" id="filesAl" style="margin-top:8px;"></div>
+      <div class="muted" id="reqAl" style="margin-top:4px;"></div>
+      <div class="status" id="statusAl"></div>
+    </div>
+
+    <div class="card" id="kpiCardAl" style="display:none;">
+      <h2>Resumen</h2>
+      <div class="kpis" id="kpisAl"></div>
+    </div>
+
+    <div class="card" id="tableCardAl" style="display:none;">
+      <h2>Detalle</h2>
+      <div class="row" style="margin-bottom:10px;">
+        <select id="accionFilterAl">
+          <option value="">Todas las acciones</option>
+          <option>Cancelar</option><option>Alerta</option><option>Enrutar</option>
+          <option>Captura volumen</option><option>Sin tarifario</option><option>Revisar</option>
+        </select>
+        <input type="text" id="searchAl" placeholder="Buscar pedido, guía, tienda o CP...">
+        <button class="secondary small" id="btnExportAl">Exportar (Excel)</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Pedido</th><th>Guía</th><th>Carrier</th><th>Venta</th><th>Tienda</th><th>CP</th><th>Km (OSRM)</th><th>Proveedor</th><th>Precio unit.</th><th>Vol M3</th><th>Cotización</th><th>Var</th><th>Acción</th></tr></thead>
+          <tbody id="bodyAl"></tbody>
+        </table>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <button class="secondary small" id="prevAl">‹ Anterior</button>
+        <span class="muted" id="pageAl"></span>
+        <button class="secondary small" id="nextAl">Siguiente ›</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIENDAS -->
+  <div class="panel" id="panel-tiendas">
+    <div class="card">
+      <h2>Respaldo de bases (Tiendas + Bigticket + CPs)</h2>
+      <div class="row">
+        <button class="secondary small" id="btnExportBackup">Descargar bases.json</button>
+        <label class="file-btn">Cargar bases.json<input type="file" id="fileInputBackup" accept=".json" style="display:none;"></label>
+        <span class="status" id="statusBackup"></span>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <input type="text" id="remoteUrlInput" placeholder="URL raw de GitHub a bases.json (ej: https://raw.githubusercontent.com/usuario/repo/main/bases.json)">
+        <button class="secondary small" id="btnLoadRemote">Cargar desde URL</button>
+        <label style="font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:5px;"><input type="checkbox" id="rememberRemoteUrl"> Recordar y cargar sola al abrir</label>
+        <span class="status" id="statusRemote"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Segmento: Tiendas (CSV / XLSX)</h2>
+      <div class="row">
+        <label class="file-btn">Subir archivo(s)<input type="file" id="fileInput" accept=".csv,.xlsx,.xls" multiple style="display:none;"></label>
+        <label style="font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:5px;"><input type="checkbox" id="appendModeTiendas"> Agregar a la base actual (no reemplazar)</label>
+        <select id="sheetPickerTiendas" class="sheet-picker"></select>
+        <button class="secondary small sheet-picker" id="btnLoadSheetTiendas">Cargar hoja seleccionada</button>
+        <button class="secondary small" id="btnReset">Restaurar datos de ejemplo</button>
+        <span class="status" id="statusFile"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Segmento: Bigticket (CDT / CEDIS)</h2>
+      <div class="row">
+        <label class="file-btn">Subir archivo(s)<input type="file" id="fileInputBT" accept=".csv,.xlsx,.xls" multiple style="display:none;"></label>
+        <label style="font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:5px;"><input type="checkbox" id="appendModeBT"> Agregar a la base actual (no reemplazar)</label>
+        <select id="sheetPickerBT" class="sheet-picker"></select>
+        <button class="secondary small sheet-picker" id="btnLoadSheetBT">Cargar hoja seleccionada</button>
+        <button class="secondary small" id="btnResetBT">Vaciar base Bigticket</button>
+        <span class="status" id="statusFileBT"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Tarifario de proveedores (Cotizador UM)</h2>
+      <div class="row">
+        <label class="file-btn">Subir tarifario (Excel)<input type="file" id="fileInputTarifa" accept=".xlsx,.xls,.xlsm" style="display:none;"></label>
+        <button class="secondary small" id="btnExportTarifa">Descargar tarifario.json</button>
+        <label class="file-btn">Cargar tarifario.json<input type="file" id="fileInputTarifaJson" accept=".json" style="display:none;"></label>
+        <button class="secondary small" id="btnResetTarifa">Vaciar tarifario</button>
+        <span class="status" id="statusTarifa"></span>
+      </div>
+      <div id="tarifaSummary" class="muted" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Umbrales de distancia (para el estatus)</h2>
+      <div class="thresholds">
+        <label>Óptimo hasta <input type="number" id="thOptimo" value="5" step="0.5"> km</label>
+        <label>Alerta hasta <input type="number" id="thAlerta" value="15" step="0.5"> km</label>
+        <span class="muted">Mayor a Alerta = Crítico</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Tiendas actuales</h2>
+      <table>
+        <thead><tr><th>No.</th><th>Tienda</th><th>Zona</th><th>Portal</th><th>Municipio</th><th>Estado</th><th>Lat</th><th>Lng</th><th></th></tr></thead>
+        <tbody id="storeTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Tiendas Bigticket actuales</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Tienda</th><th>Localidad</th><th>Almacén</th><th>Portal</th><th>Municipio</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="storeTableBodyBT"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Tarifarios detectados</h2>
+      <table>
+        <thead><tr><th>Hoja</th><th>Tarifario</th><th>Rangos de reparto</th><th>Km máx.</th><th>Otros conceptos</th></tr></thead>
+        <tbody id="tarifaTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- BIGTICKET -->
+  <div class="panel" id="panel-bigticket">
+    <div class="card">
+      <h2>Domicilio del cliente</h2>
+      <div class="row">
+        <input type="text" id="addrInputBT" placeholder="Dirección completa, código postal, o 'lat,lng'">
+        <input type="number" id="volInputBT" placeholder="Volumen M3" step="0.001" min="0" style="width:130px;">
+        <select id="modoBT">
+          <option value="BT">Tiendas BT</option>
+          <option value="TODAS">Todas las tiendas Sears</option>
+        </select>
+        <select id="almacenFilterBT">
+          <option value="">Ambos almacenes</option>
+          <option value="CDT">Solo CDT 870</option>
+          <option value="CEDIS">Solo CEDIS 850</option>
+        </select>
+        <button id="btnBuscarBT">Buscar mejor opción</button>
+      </div>
+      <div class="status" id="statusBT"></div>
+      <div class="muted" id="resolvedAddrBT" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Seleccionar tiendas a comparar (opcional)</h2>
+      <p class="muted">Si no seleccionas ninguna, se usa toda la tabla Bigticket (filtrada por el almacén elegido arriba).</p>
+      <div class="row" style="margin-bottom:10px;">
+        <input type="text" id="storeSearchBT" placeholder="Buscar por ID o nombre de tienda...">
+        <select id="portalFilterBT"><option value="">Todos los portales</option></select>
+        <button class="secondary small" id="btnSelectAllBT">Agregar visibles</button>
+        <button class="secondary small" id="btnSelectNoneBT">Quitar selección</button>
+      </div>
+      <div id="selectedChipsBT" class="row" style="margin-bottom:10px; display:none;"></div>
+      <div class="store-picker" id="storePickerBT"></div>
+      <div class="row" style="margin-top:14px;">
+        <button id="btnCompareBT">Comparar seleccionadas</button>
+        <span class="status" id="statusCompareBT"></span>
+      </div>
+    </div>
+
+    <div class="card" id="mapCardBT" style="display:none;">
+      <h2>Mapa — mejor ruta (almacén → tienda → cliente, o almacén → cliente directo)</h2>
+      <div id="bestOptionBT" class="muted" style="margin-bottom:10px;"></div>
+      <div id="compareMapBT"></div>
+      <div class="muted" style="margin-top:8px;">
+        <span class="legend-dot" style="background:#2E86AB;"></span>Cliente&nbsp;&nbsp;
+        <span class="legend-dot" style="background:#5E35B1;"></span>CDT 870&nbsp;&nbsp;
+        <span class="legend-dot" style="background:#00838F;"></span>CEDIS 850&nbsp;&nbsp;
+        <span class="legend-dot" style="background:#2E7D32;"></span>Tienda→cliente&nbsp;&nbsp;
+        <span class="muted">(línea punteada larga = envío directo almacén→cliente; línea gruesa = mejor opción)</span>
+      </div>
+    </div>
+
+    <div class="card" id="resultCardBT" style="display:none;">
+      <h2>Resultado (ruta real)</h2>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Opción</th><th>Localidad</th><th>Almacén</th><th>Portal</th><th>Surtido (almacén → tienda)</th><th>Entrega (→ cliente)</th><th>Tiempo total</th><th>Estatus</th><th>Proveedor</th><th>Precio unit.</th><th>Cotización</th></tr>
+        </thead>
+        <tbody id="resultBodyBT"></tbody>
+      </table>
+      <div class="muted" style="margin-top:8px;">Estatus = km de entrega. Cotización = precio del rango de km de entrega (km truncado: 5.9 → 0 a 5) × volumen M3. Solo aplica a tiendas.</div>
+      <div class="row" style="margin-top:10px;">
+        <button class="secondary small" id="btnExportBT" disabled>Exportar resultado (CSV)</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ---------- Coordenadas fijas de origen ----------
+const DC_COORDS = {
+  CDT:   {lat: 19.4977182, lng: -99.158728,   label: "CDT 870"},
+  CEDIS: {lat: 20.9052977, lng: -101.3920897, label: "CEDIS 850"}
+};
+
+// ---------- Datos de ejemplo ----------
+const SAMPLE_STORES = [
+  {numero:"101", nombre:"Sears Insurgentes",  portal:"Sears",    zona:"CDMX Centro", lat:19.4098, lng:-99.1719},
+  {numero:"102", nombre:"Sears Perisur",      portal:"Sears",    zona:"CDMX Sur",    lat:19.3037, lng:-99.1876},
+  {numero:"103", nombre:"Sears Satelite",     portal:"Sears",    zona:"Edomex Nte",  lat:19.5075, lng:-99.2384},
+  {numero:"201", nombre:"Sanborns Reforma",   portal:"Sanborns", zona:"CDMX Centro", lat:19.4326, lng:-99.1450},
+  {numero:"202", nombre:"Sanborns Coyoacan",  portal:"Sanborns", zona:"CDMX Sur",    lat:19.3467, lng:-99.1618},
+  {numero:"104", nombre:"Sears Santa Fe",     portal:"Sears",    zona:"CDMX Pte",    lat:19.3597, lng:-99.2610},
+];
+
+let STORES = [];
+let STORES_BT = [];
+
+// ---------- Persistencia (localStorage) ----------
+const LS_TIENDAS = 'localizador_stores_v1';
+const LS_BT = 'localizador_stores_bt_v1';
+const LS_CP = 'localizador_cp_catalog_v1';
+
+function saveStores(){ try{ localStorage.setItem(LS_TIENDAS, JSON.stringify(STORES)); }catch(e){} }
+function saveStoresBT(){ try{ localStorage.setItem(LS_BT, JSON.stringify(STORES_BT)); }catch(e){} }
+// Catálogo CP en IndexedDB (localStorage no alcanza: ~5 MB)
+function idbOpen(){
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open('localizador_db', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('kv');
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+async function idbSet(key, val){
+  const db = await idbOpen();
+  return new Promise((res, rej) => { const tx = db.transaction('kv','readwrite'); tx.objectStore('kv').put(val, key); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
+}
+async function idbGet(key){
+  const db = await idbOpen();
+  return new Promise((res, rej) => { const rq = db.transaction('kv','readonly').objectStore('kv').get(key); rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error); });
+}
+function saveCPCatalog(){
+  idbSet('cp_catalog', [...CP_CATALOG]).catch(() => {});
+  try{ localStorage.removeItem(LS_CP); }catch(e){}
+}
+async function loadCPCatalogIDB(){
+  try{
+    const arr = await idbGet('cp_catalog');
+    if(Array.isArray(arr) && arr.length && !CP_CATALOG.size){ CP_CATALOG = new Map(arr); }
+  }catch(e){}
+  if(typeof renderReqAl === 'function') renderReqAl();
+}
+
+function loadPersisted(){
+  try{
+    const s = localStorage.getItem(LS_TIENDAS);
+    STORES = s ? JSON.parse(s) : JSON.parse(JSON.stringify(SAMPLE_STORES));
+  }catch(e){ STORES = JSON.parse(JSON.stringify(SAMPLE_STORES)); }
+  try{
+    const b = localStorage.getItem(LS_BT);
+    STORES_BT = b ? JSON.parse(b) : [];
+  }catch(e){ STORES_BT = []; }
+  try{
+    const c = localStorage.getItem(LS_CP);   // compatibilidad con versiones anteriores
+    CP_CATALOG = c ? new Map(JSON.parse(c)) : new Map();
+    if(c) saveCPCatalog();
+  }catch(e){ CP_CATALOG = new Map(); }
+  try{
+    const t = localStorage.getItem(LS_TARIFA);
+    if(t){ const o = JSON.parse(t); PROV_MAP = new Map(o.prov || []); TARIFAS = new Map(o.tarifas || []); }
+  }catch(e){ PROV_MAP = new Map(); TARIFAS = new Map(); }
+}
+
+// ---------- Tarifario de proveedores ----------
+const LS_TARIFA = 'localizador_tarifario_v1';
+let PROV_MAP = new Map();   // No. tienda -> {tienda, proveedor, ops:[{hoja, tarifario}]}
+let TARIFAS = new Map();    // "HOJA|TARIFARIO" -> {hoja, codigo, rangos:[{concepto,kmMin,kmMax,precio,unidad}], otros:[{concepto,precio,unidad}]}
+
+function saveTarifas(){ try{ localStorage.setItem(LS_TARIFA, JSON.stringify({prov:[...PROV_MAP], tarifas:[...TARIFAS]})); }catch(e){} }
+function normStoreId(v){ const s = String(v ?? '').trim(); if(/^\d+(\.0+)?$/.test(s)) return String(parseInt(s,10)); return s.toUpperCase(); }
+function normCode(v){ return String(v ?? '').replace(/[ \s]+/g,'').toUpperCase(); }
+function parseMoney(v){
+  if(typeof v === 'number') return v;
+  const s = String(v ?? '').replace(/[$,\s]/g,'');
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+function fmtMoney(n){ return n === null || n === undefined || isNaN(n) ? '-' : '$' + n.toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+function parseProveedoresSheet(ws){
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+  const hIdx = rows.findIndex(r => r.some(c => normalizeHeader(c) === 'op1'));
+  if(hIdx < 0) throw new Error('La hoja Proveedores no tiene la columna Op1.');
+  const h = rows[hIdx].map(normalizeHeader);
+  const col = (cands) => h.findIndex(x => cands.includes(x));
+  const cNo = col(['no.','no','numero','num','no tienda','id tienda','tienda no.']);
+  const cTda = col(['tienda','nombre']);
+  const cProv = col(['proveedor']);
+  const cOp1 = col(['op1']), cT1 = col(['tarifario 1','tarifario1']);
+  const cOp2 = col(['op2']), cT2 = col(['tarifario 2','tarifario2']);
+  if(cNo < 0) throw new Error('La hoja Proveedores no tiene la columna No.');
+  const map = new Map();
+  rows.slice(hIdx+1).forEach(r => {
+    const id = normStoreId(r[cNo]);
+    if(!id) return;
+    const ops = [];
+    if(cOp1 >= 0 && cT1 >= 0 && String(r[cOp1]).trim() && String(r[cT1]).trim()) ops.push({hoja: normCode(r[cOp1]), tarifario: normCode(r[cT1])});
+    if(cOp2 >= 0 && cT2 >= 0 && String(r[cOp2]).trim() && String(r[cT2]).trim()) ops.push({hoja: normCode(r[cOp2]), tarifario: normCode(r[cT2])});
+    map.set(id, {tienda: cTda >= 0 ? String(r[cTda]).trim() : '', proveedor: cProv >= 0 ? String(r[cProv]).trim() : '', ops});
+  });
+  return map;
+}
+
+function parseProviderSheet(sheetName, ws, out){
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+  const hoja = normCode(sheetName);
+  const isCode = v => /^P\d+-\d+$/i.test(normCode(v));
+  for(let r=0; r<rows.length; r++){
+    const row = rows[r];
+    for(let c=0; c<row.length; c++){
+      if(!isCode(row[c])) continue;
+      const codigo = normCode(row[c]);
+      // Columna de precio: encabezado con "precio" en la misma fila, a la derecha del código
+      let pCol = -1, uCol = -1;
+      for(let k=c+1; k<row.length; k++){
+        const t = normalizeHeader(row[k]);
+        if(pCol < 0 && t.includes('precio')) pCol = k;
+        if(uCol < 0 && t.includes('unidad')) uCol = k;
+      }
+      const block = {hoja, codigo, rangos:[], otros:[]};
+      for(let rr=r+1; rr<rows.length; rr++){
+        const rw = rows[rr];
+        const concepto = String(rw[c] ?? '').trim();
+        if(!concepto || isCode(concepto)) break;
+        let precio = null;
+        if(pCol >= 0) precio = parseMoney(rw[pCol]);
+        if(precio === null){
+          for(let k=Math.min(rw.length-1, c+8); k>c; k--){ const p = parseMoney(rw[k]); if(p !== null){ precio = p; break; } }
+        }
+        if(precio === null) continue;
+        const unidad = uCol >= 0 ? String(rw[uCol] ?? '').trim() : '';
+        // Solo "Reparto local a clientes X a Y Km" cuenta como rango de entrega (no motos, transferencias, etc.)
+        const m = concepto.match(/(\d+(?:\.\d+)?)\s*(?:a|-|al)\s*(\d+(?:\.\d+)?)\s*km/i);
+        const esRepartoLocal = normalizeHeader(concepto).includes('reparto local');
+        if(m && esRepartoLocal) block.rangos.push({concepto, kmMin: parseFloat(m[1]), kmMax: parseFloat(m[2]), precio, unidad});
+        else block.otros.push({concepto, precio, unidad});
+      }
+      block.rangos.sort((a,b) => a.kmMin - b.kmMin);
+      out.set(`${hoja}|${codigo}`, block);
+    }
+  }
+}
+
+// Cotiza una tienda según km de entrega (tienda → cliente). Km truncado: 5.9 → rango 0 a 5.
+function cotizarTienda(storeId, kmEntrega, vol){
+  const prov = PROV_MAP.get(normStoreId(storeId));
+  if(!prov || !prov.ops.length) return {opciones:[], msg:'Sin proveedor'};
+  const kmInt = Math.floor(kmEntrega);
+  const opciones = prov.ops.map((op, idx) => {
+    const block = TARIFAS.get(`${op.hoja}|${op.tarifario}`);
+    const base = {hoja: op.hoja, tarifario: op.tarifario, proveedor: idx === 0 ? prov.proveedor : ''};
+    if(!block) return {...base, precio:null, costo:null, msg:`No se encontró ${op.tarifario} en hoja ${op.hoja}`};
+    if(!block.rangos.length) return {...base, precio:null, costo:null, msg:'Tarifario sin rangos de km'};
+    let rango = block.rangos.find(x => kmInt >= x.kmMin && kmInt <= x.kmMax);
+    // Si cae en un hueco entre rangos (ej. falta una fila o viene mal escrita), toma el siguiente rango hacia arriba
+    if(!rango) rango = block.rangos.filter(x => x.kmMax >= kmInt).sort((a,b) => a.kmMax - b.kmMax)[0];
+    if(!rango){
+      const maxKm = Math.max(...block.rangos.map(x => x.kmMax));
+      return {...base, precio:null, costo:null, msg:`Excede reparto local (máx. ${maxKm} km)`};
+    }
+    const costo = vol > 0 ? rango.precio * vol : null;
+    return {...base, precio: rango.precio, rango: rango.concepto, costo, msg: vol > 0 ? '' : 'Captura volumen'};
+  });
+  opciones.sort((a,b) => {
+    const ca = a.precio === null ? Infinity : a.precio, cb = b.precio === null ? Infinity : b.precio;
+    return ca - cb;
+  });
+  return {opciones, msg:''};
+}
+
+function renderTarifaTable(){
+  const body = document.getElementById('tarifaTableBody');
+  const list = [...TARIFAS.values()].sort((a,b) => a.hoja.localeCompare(b.hoja) || a.codigo.localeCompare(b.codigo, undefined, {numeric:true}));
+  body.innerHTML = list.map(t => `<tr>
+      <td>${t.hoja}</td><td><span class="dc-tag">${t.codigo}</span></td>
+      <td>${t.rangos.map(r => `${r.kmMin}–${r.kmMax} km: ${fmtMoney(r.precio)}`).join('<br>') || '<span class="muted">-</span>'}</td>
+      <td>${t.rangos.length ? Math.max(...t.rangos.map(r => r.kmMax)) : '-'}</td>
+      <td class="muted">${t.otros.length}</td>
+    </tr>`).join('');
+  const hojas = new Set(list.map(t => t.hoja));
+  const usados = new Set();
+  PROV_MAP.forEach(p => p.ops.forEach(o => usados.add(`${o.hoja}|${o.tarifario}`)));
+  const faltantes = [...usados].filter(k => !TARIFAS.has(k));
+  document.getElementById('tarifaSummary').innerHTML = PROV_MAP.size || TARIFAS.size
+    ? `${PROV_MAP.size} tiendas en Proveedores · ${TARIFAS.size} tarifarios en ${hojas.size} hoja(s)` + (faltantes.length ? `<br><span style="color:var(--critico);">Tarifarios referenciados que no se encontraron: ${faltantes.map(k => k.replace('|',' / ')).join(', ')}</span>` : '')
+    : 'Sin tarifario cargado.';
+  if(typeof renderReqAl === 'function') renderReqAl();
+}
+
+// ---------- Utilidades ----------
+function haversineKm(lat1, lon1, lat2, lon2){
+  const R = 6371;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLon = (lon2-lon1) * Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function getThresholds(){
+  return {
+    optimo: parseFloat(document.getElementById('thOptimo').value) || 5,
+    alerta: parseFloat(document.getElementById('thAlerta').value) || 15
+  };
+}
+
+function statusFor(distKm){
+  const t = getThresholds();
+  if(distKm <= t.optimo) return {label:"Óptimo", cls:"optimo"};
+  if(distKm <= t.alerta) return {label:"Alerta", cls:"alerta"};
+  return {label:"Crítico", cls:"critico"};
+}
+
+function rankStores(lat, lng, portalFilter){
+  let list = STORES;
+  if(portalFilter) list = STORES.filter(s => (s.portal || s.zona || 'Sin portal') === portalFilter);
+  return list.map(s => ({...s, dist: haversineKm(lat, lng, s.lat, s.lng)}))
+             .sort((a,b) => a.dist - b.dist);
+}
+
+function almacenKey(a){
+  if(!a) return '';
+  const s = String(a).toUpperCase();
+  if(s.includes('CDT')) return 'CDT';
+  if(s.includes('CEDIS')) return 'CEDIS';
+  return '';
+}
+
+function formatMin(min){
+  const m = Math.round(min);
+  if(m < 60) return `${m} min`;
+  const h = Math.floor(m/60), rem = m%60;
+  return rem ? `${h}h ${rem}min` : `${h}h`;
+}
+
+// Fuente de tiendas para Bigticket: base BT o todas las tiendas (excepciones fuera de la logística BT)
+function modoBT(){ const el = document.getElementById('modoBT'); return el ? el.value : 'BT'; }
+function btSource(){
+  if(modoBT() !== 'TODAS') return STORES_BT;
+  return STORES.filter(s => normalizeHeader(s.portal || s.zona || '').includes('sears'))
+    .filter(s => {
+      // Excluye los propios almacenes (CDT 870 / CEDIS 850): ya se evalúan como "Envío directo"
+      const id = normStoreId(s.numero || s.id || '');
+      if(id === '870' || id === '850') return false;
+      if(haversineKm(DC_COORDS.CDT.lat, DC_COORDS.CDT.lng, s.lat, s.lng) < 0.5) return false;
+      if(haversineKm(DC_COORDS.CEDIS.lat, DC_COORDS.CEDIS.lng, s.lat, s.lng) < 0.5) return false;
+      return true;
+    }).map(s => ({id: s.numero || s.id || '', nombre: s.nombre, localidad: '', almacen: '', portal: s.portal || s.zona || '', zona: s.zona || '', lat: s.lat, lng: s.lng, cp: s.cp || '', estado: s.estado || '', municipio: s.municipio || ''}));
+}
+function nearestDC(s){
+  return haversineKm(DC_COORDS.CDT.lat, DC_COORDS.CDT.lng, s.lat, s.lng) <= haversineKm(DC_COORDS.CEDIS.lat, DC_COORDS.CEDIS.lng, s.lat, s.lng) ? 'CDT' : 'CEDIS';
+}
+function effAlmacen(s){ return almacenKey(s.almacen) || nearestDC(s); }
+
+function rankStoresBT(lat, lng, almacenFilter, storeSubset, portalFilter){
+  let list = (storeSubset && storeSubset.length) ? storeSubset : btSource();
+  if(almacenFilter) list = list.filter(s => effAlmacen(s) === almacenFilter);
+  if(portalFilter && !(storeSubset && storeSubset.length)) list = list.filter(s => (s.portal || 'Sin portal') === portalFilter);
+  return list.map(s => {
+    const dist = haversineKm(lat, lng, s.lat, s.lng);
+    const distCDT = haversineKm(DC_COORDS.CDT.lat, DC_COORDS.CDT.lng, s.lat, s.lng);
+    const distCEDIS = haversineKm(DC_COORDS.CEDIS.lat, DC_COORDS.CEDIS.lng, s.lat, s.lng);
+    const ak = almacenKey(s.almacen);
+    const supplyDist = ak === 'CDT' ? distCDT : ak === 'CEDIS' ? distCEDIS : Math.min(distCDT, distCEDIS);
+    return {...s, dist, distCDT, distCEDIS, supplyDist, total: dist + supplyDist};
+  }).sort((a,b) => a.total - b.total);
+}
+
+// ---------- Geocodificación (Nominatim / OpenStreetMap) ----------
+function parseLatLng(str){
+  const m = str.trim().match(/^(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)$/);
+  if(!m) return null;
+  const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+  if(Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return {lat, lng};
+}
+
+function padCP(v){ return String(v).trim().replace(/\D/g,'').padStart(5,'0'); }
+
+async function geocode(input){
+  const direct = parseLatLng(input);
+  if(direct) return {lat:direct.lat, lng:direct.lng, label:`${direct.lat}, ${direct.lng}`, estado:'', municipio:'', colonia:'', cp:''};
+
+  const isCP = /^\d{4,5}$/.test(input.trim());
+
+  if(isCP && CP_CATALOG.size){
+    const cpKey = padCP(input);
+    const hit = CP_CATALOG.get(cpKey);
+    if(hit){
+      return {
+        lat: hit.lat, lng: hit.lng,
+        label: `CP ${cpKey} — ${hit.municipio || ''}${hit.municipio && hit.estado ? ', ' : ''}${hit.estado || ''}`,
+        estado: hit.estado || '', municipio: hit.municipio || '', colonia: '', cp: cpKey
+      };
+    }
+  }
+
+  let url;
+  if(isCP){
+    url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&postalcode=${encodeURIComponent(input.trim())}&country=Mexico&limit=1`;
+  } else {
+    const q = /m[eé]xico/i.test(input) ? input : `${input}, México`;
+    url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(q)}&limit=1`;
+  }
+
+  const resp = await fetch(url, {headers:{'Accept-Language':'es'}});
+  if(!resp.ok) throw new Error('No se pudo consultar el servicio de geocodificación');
+  const data = await resp.json();
+  if(!data.length) throw new Error('No se encontró la dirección/CP');
+
+  const a = data[0].address || {};
+  return {
+    lat: parseFloat(data[0].lat),
+    lng: parseFloat(data[0].lon),
+    label: data[0].display_name,
+    estado: a.state || '',
+    municipio: a.city_district || a.municipality || a.county || a.city || a.town || '',
+    colonia: a.suburb || a.neighbourhood || a.quarter || a.residential || '',
+    cp: a.postcode || ''
+  };
+}
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+// ---------- Render tabla de tiendas (Tiendas) ----------
+function renderStoreTable(){
+  const tbody = document.getElementById('storeTableBody');
+  tbody.innerHTML = STORES.map((s,i) => `
+    <tr>
+      <td>${s.numero||'-'}</td>
+      <td>${s.nombre}</td>
+      <td>${s.zona||'-'}</td>
+      <td>${s.portal||'-'}</td>
+      <td>${s.municipio||'-'}</td>
+      <td>${s.estado||'-'}</td>
+      <td>${s.lat.toFixed(5)}</td>
+      <td>${s.lng.toFixed(5)}</td>
+      <td><button class="secondary small" onclick="removeStore(${i})">Quitar</button></td>
+    </tr>`).join('');
+  document.getElementById('storeCount').textContent = `${STORES.length} tiendas · ${STORES_BT.length} Bigticket`;
+  populatePortalFilters();
+  renderStorePicker();
+  saveStores();
+  if(typeof modoBT === 'function' && modoBT() === 'TODAS' && typeof renderStorePickerBT === 'function'){ populatePortalFilterBT(); renderStorePickerBT(); }
+  if(typeof renderReqAl === 'function') renderReqAl();
+}
+
+function renderStoreTableBT(){
+  const tbody = document.getElementById('storeTableBodyBT');
+  tbody.innerHTML = STORES_BT.map((s,i) => `
+    <tr>
+      <td>${s.id||'-'}</td>
+      <td>${s.nombre}</td>
+      <td>${s.localidad ? `<span class="badge ${/local/i.test(s.localidad) && !/for/i.test(s.localidad) ? 'local' : 'foraneo'}">${s.localidad}</span>` : '-'}</td>
+      <td><span class="dc-tag">${s.almacen||'-'}</span></td>
+      <td>${s.portal||'-'}</td>
+      <td>${s.municipio||'-'}</td>
+      <td>${s.estado||'-'}</td>
+      <td><button class="secondary small" onclick="removeStoreBT(${i})">Quitar</button></td>
+    </tr>`).join('');
+  document.getElementById('storeCount').textContent = `${STORES.length} tiendas · ${STORES_BT.length} Bigticket`;
+  populatePortalFilterBT();
+  saveStoresBT();
+  if(typeof renderStorePickerBT === 'function') renderStorePickerBT();
+}
+
+function populatePortalFilters(){
+  const portals = [...new Set(STORES.map(s => s.portal || s.zona || 'Sin portal'))].sort();
+  ['portalFilterIndividual','portalFilterDash'].forEach(id => {
+    const sel = document.getElementById(id);
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Todos los portales</option>' + portals.map(p => `<option value="${p}">${p}</option>`).join('');
+    if(portals.includes(current)) sel.value = current;
+  });
+}
+
+function populatePortalFilterBT(){
+  const portals = [...new Set(btSource().map(s => s.portal || 'Sin portal'))].sort();
+  const sel = document.getElementById('portalFilterBT');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Todos los portales</option>' + portals.map(p => `<option value="${p}">${p}</option>`).join('');
+  if(portals.includes(current)) sel.value = current;
+}
+
+function removeStore(i){ STORES.splice(i,1); renderStoreTable(); }
+function removeStoreBT(i){ STORES_BT.splice(i,1); renderStoreTableBT(); }
+
+// ---------- Resultado individual (Tiendas) ----------
+const TOP_N_INDIVIDUAL = 10;
+let searchSeqInd = 0;
+
+function sortByRoute(list){
+  return list.slice().sort((a,b) => {
+    const ka = a.route ? a.route.km : (a.routeFail ? 1e9 : 2e9);
+    const kb = b.route ? b.route.km : (b.routeFail ? 1e9 : 2e9);
+    if(ka === kb) return a.dist - b.dist;
+    return ka - kb;
+  });
+}
+
+function renderResults(list){
+  const body = document.getElementById('resultBody');
+  const allDone = list.every(s => s.route || s.routeFail);
+  body.innerHTML = list.map((s,i) => {
+    let km = '<span class="muted">calculando…</span>', tm = '-', badge = '-';
+    if(s.route){
+      const st = statusFor(s.route.km);
+      km = `${s.route.km.toFixed(2)} km`; tm = formatMin(s.route.min);
+      badge = `<span class="badge ${st.cls}">${st.label}</span>`;
+    } else if(s.routeFail){
+      km = '<span class="muted">sin ruta</span>';
+    }
+    return `<tr class="${i===0 && allDone && s.route ?'rank1':''}">
+      <td>${i+1}</td><td>${s.numero||'-'}</td><td>${s.nombre}</td><td>${s.portal||s.zona||'-'}</td>
+      <td>${km}</td><td>${tm}</td><td>${badge}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('resultCard').style.display = 'block';
+}
+
+document.getElementById('btnBuscar').addEventListener('click', async () => {
+  const input = document.getElementById('addrInput').value.trim();
+  const statusEl = document.getElementById('statusIndividual');
+  if(!input){ statusEl.textContent = 'Escribe una dirección, CP o coordenadas.'; statusEl.className='status err'; return; }
+  if(STORES.length === 0){ statusEl.textContent = 'No hay tiendas cargadas.'; statusEl.className='status err'; return; }
+
+  statusEl.innerHTML = '<span class="spinner"></span> Buscando...';
+  statusEl.className = 'status';
+  try{
+    const geo = await geocode(input);
+    dashCustomer = geo;
+    const partes = [];
+    if(geo.colonia) partes.push(`Col. ${geo.colonia}`);
+    if(geo.municipio) partes.push(geo.municipio);
+    if(geo.estado) partes.push(geo.estado);
+    if(geo.cp) partes.push(`CP ${geo.cp}`);
+    document.getElementById('resolvedAddr').innerHTML = `<b>${geo.label}</b>` + (partes.length ? `<br>${partes.join(' · ')}` : '');
+    const portalFilter = document.getElementById('portalFilterIndividual').value;
+    const ranked = rankStores(geo.lat, geo.lng, portalFilter);
+    if(!ranked.length){
+      statusEl.textContent = 'No hay tiendas para ese portal.'; statusEl.className = 'status err';
+      document.getElementById('resultCard').style.display = 'none'; return;
+    }
+    // Línea recta solo para preseleccionar; lo que se muestra es la ruta real (OSRM)
+    const seq = ++searchSeqInd;
+    let list = ranked.slice(0, TOP_N_INDIVIDUAL).map(s => ({...s}));
+    renderResults(list);
+    for(let i=0; i<list.length; i++){
+      if(seq !== searchSeqInd) return;
+      statusEl.innerHTML = `<span class="spinner"></span> Calculando ruta real ${i+1} de ${list.length}...`;
+      statusEl.className = 'status';
+      const s = list[i];
+      try{
+        const r = await routeOSRM(s.lat, s.lng, geo.lat, geo.lng);
+        s.route = {km: r.distanceKm, min: r.durationMin};
+      }catch(e){ s.routeFail = true; }
+      if(seq !== searchSeqInd) return;
+      renderResults(sortByRoute(list));
+      if(i < list.length-1) await sleep(300);
+    }
+    list = sortByRoute(list);
+    renderResults(list);
+    statusEl.textContent = `Listo: ${list.length} tiendas más cercanas calculadas por ruta real.`;
+    statusEl.className = 'status ok';
+  }catch(err){
+    statusEl.textContent = err.message; statusEl.className = 'status err';
+    document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('resolvedAddr').textContent = '';
+    dashCustomer = null;
+  }
+});
+
+document.getElementById('addrInput').addEventListener('keydown', e => { if(e.key === 'Enter') document.getElementById('btnBuscar').click(); });
+
+// ---------- Búsqueda Bigticket ----------
+let lastResultsBT = [];
+let searchSeqBT = 0;
+
+function legsBT(s){
+  // Devuelve km/tiempo por tramo: surtido (almacén→tienda) y entrega (→cliente)
+  if(!s.routeReal) return null;
+  if(s.isDirect) return {supplyKm:null, supplyMin:null, clientKm:s.routeReal.km, clientMin:s.routeReal.min, totalMin:s.routeReal.min};
+  return {supplyKm:s.routeReal.supplyKm, supplyMin:s.routeReal.supplyMin, clientKm:s.routeReal.clientKm, clientMin:s.routeReal.clientMin, totalMin:s.routeReal.supplyMin + s.routeReal.clientMin};
+}
+
+function getVolBT(){
+  const v = parseFloat(document.getElementById('volInputBT').value);
+  return isNaN(v) || v <= 0 ? 0 : v;
+}
+
+function cotizacionBT(s){
+  if(s.isDirect) return {prov:'-', precio:'-', costo:'<span class="muted">Sin cotización (directo)</span>', raw:null};
+  const lg = legsBT(s);
+  if(!lg) return {prov:'-', precio:'-', costo:'-', raw:null};
+  if(!PROV_MAP.size) return {prov:'-', precio:'-', costo:'<span class="muted">Sin tarifario cargado</span>', raw:null};
+  const q = cotizarTienda(s.id, lg.clientKm, getVolBT());
+  if(!q.opciones.length) return {prov:'<span class="muted">Sin proveedor</span>', precio:'-', costo:'-', raw:q};
+  const fmtOp = (o, main) => {
+    const prov = `${o.hoja} <span class="dc-tag">${o.tarifario}</span>`;
+    const precio = o.precio !== null ? fmtMoney(o.precio) + (o.rango ? `<div class="muted">${o.rango}</div>` : '') : `<span class="muted">${o.msg}</span>`;
+    const costo = o.costo !== null ? (main ? `<b>${fmtMoney(o.costo)}</b>` : fmtMoney(o.costo)) : (o.precio !== null ? `<span class="muted">${o.msg}</span>` : '-');
+    return {prov, precio, costo};
+  };
+  const parts = q.opciones.map((o,i) => fmtOp(o, i===0));
+  const join = (k) => parts.map((p,i) => i===0 ? p[k] : `<div class="muted" style="margin-top:4px;">Op: ${p[k]}</div>`).join('');
+  return {prov: join('prov'), precio: join('precio'), costo: join('costo'), raw:q};
+}
+
+function renderResultsBT(ranked){
+  const body = document.getElementById('resultBodyBT');
+  const allDone = ranked.every(s => s.routeReal || s.routeFail);
+  body.innerHTML = ranked.map((s,i) => {
+    const isDirect = s.isDirect;
+    const localCls = s.localidad && /local/i.test(s.localidad) && !/for/i.test(s.localidad) ? 'local' : 'foraneo';
+    const lg = legsBT(s);
+    const pending = '<span class="muted">calculando…</span>';
+    const fail = '<span class="muted">sin ruta</span>';
+    let supply, client, total, badge;
+    if(lg){
+      supply = isDirect ? '-' : `${lg.supplyKm.toFixed(1)} km · ${formatMin(lg.supplyMin)}`;
+      client = `${lg.clientKm.toFixed(1)} km · ${formatMin(lg.clientMin)}`;
+      total = formatMin(lg.totalMin);
+      const st = statusFor(lg.clientKm);
+      badge = `<span class="badge ${st.cls}">${st.label}</span>`;
+    } else if(s.routeFail){
+      supply = isDirect ? '-' : fail; client = fail; total = '-'; badge = '-';
+    } else {
+      supply = isDirect ? '-' : pending; client = pending; total = '-'; badge = '-';
+    }
+    const q = cotizacionBT(s);
+    const best = i===0 && allDone && lg;
+    return `<tr class="${best ?'rank1':''}">
+      <td>${i+1}</td>
+      <td>${isDirect ? `Envío directo desde ${s.almacen}` : `${s.id ? s.id+' · ' : ''}${s.nombre}`}${best ?' <span class="badge optimo">Mejor opción</span>':''}</td>
+      <td>${isDirect ? '-' : (s.localidad ? `<span class="badge ${localCls}">${s.localidad}</span>` : '-')}</td>
+      <td><span class="dc-tag">${isDirect ? s.almacen : (s.almacen || DC_COORDS[akFor(s)].label + ' (cercano)')}</span></td>
+      <td>${isDirect ? '-' : (s.portal||'-')}</td>
+      <td>${supply}</td>
+      <td>${client}</td>
+      <td>${total}</td>
+      <td>${badge}</td>
+      <td>${q.prov}</td>
+      <td>${q.precio}</td>
+      <td>${q.costo}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('resultCardBT').style.display = 'block';
+  lastResultsBT = ranked;
+  document.getElementById('btnExportBT').disabled = !allDone;
+}
+
+document.getElementById('volInputBT').addEventListener('input', () => { if(lastResultsBT.length) renderResultsBT(lastResultsBT); });
+
+// ---------- Mapa Bigticket (ruta real: almacén → tienda → cliente, o almacén → cliente directo) ----------
+let mapBT = null, markersLayerBT = null, routeLayerBT = null;
+const DC_COLOR = {CDT:'#5E35B1', CEDIS:'#00838F'};
+
+function initMapBT(){
+  if(mapBT) return;
+  mapBT = L.map('compareMapBT').setView([23.6, -102.5], 5);
+  addBaseLayers(mapBT);
+  markersLayerBT = L.layerGroup().addTo(mapBT);
+  routeLayerBT = L.layerGroup().addTo(mapBT);
+}
+
+function akFor(s){
+  return s.isDirect ? s.almacen : (almacenKey(s.almacen) || (s.distCDT <= s.distCEDIS ? 'CDT' : 'CEDIS'));
+}
+
+function sortCombinedBT(list){
+  return list.slice().sort((a,b) => {
+    const la = legsBT(a), lb = legsBT(b);
+    const ta = la ? la.totalMin : (a.routeFail ? 1e9 : 2e9);
+    const tb = lb ? lb.totalMin : (b.routeFail ? 1e9 : 2e9);
+    if(ta === tb) return a.total - b.total;
+    return ta - tb;
+  });
+}
+
+async function renderRouteMapBT(customer, rankedStores, almacenFilter, seq){
+  initMapBT();
+  document.getElementById('mapCardBT').style.display = 'block';
+  setTimeout(() => mapBT.invalidateSize(), 50);
+  markersLayerBT.clearLayers();
+  routeLayerBT.clearLayers();
+
+  const bestEl = document.getElementById('bestOptionBT');
+  bestEl.innerHTML = '<span class="spinner"></span> Calculando la mejor ruta real (tiendas y envío directo)...';
+
+  const almacenesToCheck = almacenFilter ? [almacenFilter] : ['CDT','CEDIS'];
+  const topStores = rankedStores.slice(0, Math.min(5, rankedStores.length)).map(s => ({...s, isDirect:false}));
+  const directCandidates = almacenesToCheck.map(ak => ({almacen: ak, isDirect:true, nombre:`Envío directo ${ak}`}));
+
+  // Preselección en línea recta (solo para decidir qué rutear); lo mostrado es OSRM
+  let combined = topStores.concat(directCandidates.map(d => {
+    const dc = DC_COORDS[d.almacen];
+    return {...d, total: haversineKm(dc.lat, dc.lng, customer.lat, customer.lng)};
+  })).sort((a,b) => a.total - b.total);
+
+  renderResultsBT(combined);
+
+  const bounds = [[customer.lat, customer.lng]];
+  L.marker([customer.lat, customer.lng], {icon: L.divIcon({className:'', html:`<div style="width:16px;height:16px;border-radius:50%;background:#2E86AB;border:2px solid #fff;box-shadow:0 0 0 1px #2E86AB;"></div>`, iconSize:[16,16]})}).bindPopup('Domicilio del cliente').addTo(markersLayerBT);
+
+  const dcAdded = new Set();
+  const toProcess = combined.slice();
+
+  for(let i=0; i<toProcess.length; i++){
+    if(seq !== searchSeqBT) return;
+    const s = toProcess[i];
+    const ak = akFor(s);
+    const dc = DC_COORDS[ak];
+    const color = DC_COLOR[ak];
+
+    if(!dcAdded.has(ak)){
+      L.marker([dc.lat, dc.lng], {icon: L.divIcon({className:'', html:`<div style="width:16px;height:16px;border-radius:3px;background:${color};border:2px solid #fff;box-shadow:0 0 0 1px ${color};"></div>`, iconSize:[16,16]})}).bindPopup(dc.label).addTo(markersLayerBT);
+      bounds.push([dc.lat, dc.lng]);
+      dcAdded.add(ak);
+    }
+
+    try{
+      if(s.isDirect){
+        const legDirect = await routeOSRM(dc.lat, dc.lng, customer.lat, customer.lng);
+        if(seq !== searchSeqBT) return;
+        s.routeReal = {km: legDirect.distanceKm, min: legDirect.durationMin, coords: legDirect.coords};
+        L.polyline(legDirect.coords, {color, weight: 3, opacity: 0.65, dashArray: '2,10'}).addTo(routeLayerBT);
+      } else {
+        const legSupply = await routeOSRM(dc.lat, dc.lng, s.lat, s.lng);
+        await sleep(280);
+        const legClient = await routeOSRM(s.lat, s.lng, customer.lat, customer.lng);
+        if(seq !== searchSeqBT) return;
+        s.routeReal = {supplyKm: legSupply.distanceKm, supplyMin: legSupply.durationMin, clientKm: legClient.distanceKm, clientMin: legClient.durationMin, supplyCoords: legSupply.coords, clientCoords: legClient.coords};
+        L.marker([s.lat, s.lng], {icon: L.divIcon({className:'', html:`<div style="width:13px;height:13px;border-radius:50%;background:#fff;border:3px solid ${color};"></div>`, iconSize:[13,13]})}).bindPopup(`<b>${s.id ? s.id+' · ' : ''}${s.nombre}</b><br>Surtido ${ak}→tienda: ${legSupply.distanceKm.toFixed(1)} km · ${formatMin(legSupply.durationMin)}<br>Entrega tienda→cliente: ${legClient.distanceKm.toFixed(1)} km · ${formatMin(legClient.durationMin)}`).addTo(markersLayerBT);
+        L.polyline(legSupply.coords, {color, weight: 2.5, opacity: 0.5, dashArray:'5,5'}).addTo(routeLayerBT);
+        L.polyline(legClient.coords, {color:'#2E7D32', weight: 2.5, opacity: 0.5, dashArray:'5,5'}).addTo(routeLayerBT);
+        bounds.push([s.lat, s.lng]);
+      }
+    }catch(err){
+      s.routeReal = null;
+      s.routeFail = true;
+    }
+    if(seq !== searchSeqBT) return;
+    combined = sortCombinedBT(combined);
+    renderResultsBT(combined);
+    if(i < toProcess.length-1) await sleep(280);
+  }
+
+  // Resaltar la ruta ganadora
+  const winner = combined.find(s => s.routeReal);
+  if(winner){
+    const ak = akFor(winner);
+    const color = DC_COLOR[ak];
+    if(winner.isDirect){
+      L.polyline(winner.routeReal.coords, {color, weight:5, opacity:0.95}).addTo(routeLayerBT);
+    } else {
+      L.polyline(winner.routeReal.supplyCoords, {color, weight:5, opacity:0.95}).addTo(routeLayerBT);
+      L.polyline(winner.routeReal.clientCoords, {color:'#2E7D32', weight:5, opacity:0.95}).addTo(routeLayerBT);
+    }
+  }
+
+  if(bounds.length > 1) mapBT.fitBounds(bounds, {padding:[30,30]});
+
+  if(winner){
+    const lg = legsBT(winner);
+    const ak = akFor(winner);
+    if(winner.isDirect){
+      bestEl.innerHTML = `<b>Mejor opción real:</b> Envío directo desde <span class="dc-tag">${ak}</span> — entrega ${lg.clientKm.toFixed(1)} km · ${formatMin(lg.clientMin)}.`;
+    } else {
+      bestEl.innerHTML = `<b>Mejor opción real:</b> Vía tienda <b>${winner.nombre}</b> (<span class="dc-tag">${ak}</span>) — surtido ${lg.supplyKm.toFixed(1)} km · ${formatMin(lg.supplyMin)} | entrega ${lg.clientKm.toFixed(1)} km · ${formatMin(lg.clientMin)} | tiempo total ${formatMin(lg.totalMin)}.`;
+    }
+  } else {
+    bestEl.textContent = 'No fue posible calcular rutas reales para estas opciones.';
+  }
+}
+
+async function buscarMejorOpcionBT(requireSelection){
+  const input = document.getElementById('addrInputBT').value.trim();
+  const statusEl = document.getElementById(requireSelection ? 'statusCompareBT' : 'statusBT');
+  if(!input){ statusEl.textContent = 'Escribe primero la dirección del cliente arriba.'; statusEl.className='status err'; return; }
+  if(btSource().length === 0){ statusEl.textContent = modoBT() === 'TODAS' ? (STORES.length ? 'Ninguna tienda con portal Sears en la base de Tiendas (revisa la columna Portal).' : 'No hay tiendas cargadas.') : 'No hay tiendas Bigticket cargadas.'; statusEl.className='status err'; return; }
+
+  const manualSubset = [...selectedStoresBT.values()];
+  if(requireSelection && !manualSubset.length){
+    statusEl.textContent = 'Selecciona al menos una tienda para comparar.'; statusEl.className='status err'; return;
+  }
+
+  const seq = ++searchSeqBT;
+  statusEl.innerHTML = '<span class="spinner"></span> Buscando...';
+  statusEl.className = 'status';
+  try{
+    const geo = await geocode(input);
+    if(seq !== searchSeqBT) return;
+    const partes = [];
+    if(geo.colonia) partes.push(`Col. ${geo.colonia}`);
+    if(geo.municipio) partes.push(geo.municipio);
+    if(geo.estado) partes.push(geo.estado);
+    if(geo.cp) partes.push(`CP ${geo.cp}`);
+    document.getElementById('resolvedAddrBT').innerHTML = `<b>${geo.label}</b>` + (partes.length ? `<br>${partes.join(' · ')}` : '');
+    const almacenFilter = document.getElementById('almacenFilterBT').value;
+    const portalFilter = document.getElementById('portalFilterBT').value;
+    const ranked = rankStoresBT(geo.lat, geo.lng, almacenFilter, manualSubset, portalFilter);
+    if(!ranked.length){
+      statusEl.textContent = 'No hay tiendas para ese filtro.'; statusEl.className = 'status err';
+      document.getElementById('resultCardBT').style.display = 'none';
+      document.getElementById('mapCardBT').style.display = 'none';
+      return;
+    }
+    statusEl.textContent = '';
+    renderRouteMapBT(geo, ranked, almacenFilter, seq);
+  }catch(err){
+    statusEl.textContent = err.message; statusEl.className = 'status err';
+    document.getElementById('resultCardBT').style.display = 'none';
+    document.getElementById('resolvedAddrBT').textContent = '';
+  }
+}
+
+document.getElementById('btnBuscarBT').addEventListener('click', () => buscarMejorOpcionBT(false));
+document.getElementById('btnCompareBT').addEventListener('click', () => buscarMejorOpcionBT(true));
+document.getElementById('addrInputBT').addEventListener('keydown', e => { if(e.key === 'Enter') document.getElementById('btnBuscarBT').click(); });
+
+document.getElementById('btnExportBT').addEventListener('click', () => {
+  if(!lastResultsBT.length) return;
+  const vol = getVolBT();
+  const headers = ['opcion','id_tienda','tienda','localidad','almacen','portal','surtido_km','surtido_min','entrega_km','entrega_min','tiempo_total_min','estatus','proveedor_hoja','tarifario','rango','precio_unitario','volumen_m3','cotizacion','nota'];
+  const rows = lastResultsBT.map(s => {
+    const lg = legsBT(s);
+    let op = null;
+    if(!s.isDirect && lg && PROV_MAP.size){ const q = cotizarTienda(s.id, lg.clientKm, vol); op = q.opciones[0] || null; }
+    return {
+      opcion: s.isDirect ? 'Envío directo' : 'Vía tienda',
+      id_tienda: s.isDirect ? '' : (s.id || ''), tienda: s.isDirect ? '' : s.nombre,
+      localidad: s.isDirect ? '' : (s.localidad || ''), almacen: s.almacen || '', portal: s.isDirect ? '' : (s.portal || ''),
+      surtido_km: lg && !s.isDirect ? lg.supplyKm.toFixed(1) : '', surtido_min: lg && !s.isDirect ? Math.round(lg.supplyMin) : '',
+      entrega_km: lg ? lg.clientKm.toFixed(1) : '', entrega_min: lg ? Math.round(lg.clientMin) : '',
+      tiempo_total_min: lg ? Math.round(lg.totalMin) : '',
+      estatus: lg ? statusFor(lg.clientKm).label : 'sin ruta',
+      proveedor_hoja: op ? op.hoja : '', tarifario: op ? op.tarifario : '', rango: op && op.rango ? op.rango : '',
+      precio_unitario: op && op.precio !== null ? op.precio.toFixed(2) : '',
+      volumen_m3: vol || '', cotizacion: op && op.costo !== null ? op.costo.toFixed(2) : '',
+      nota: s.isDirect ? 'Sin cotización (directo)' : (op ? op.msg : '')
+    };
+  });
+  const csv = [headers.join(',')].concat(rows.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g,'""')}"`).join(','))).join('\n');
+  const blob = new Blob(["﻿"+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'bigticket_resultado.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ---------- Carga de tarifario ----------
+document.getElementById('fileInputTarifa').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('statusTarifa');
+  statusEl.innerHTML = '<span class="spinner"></span> Leyendo tarifario...';
+  statusEl.className = 'status';
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try{
+      const wb = XLSX.read(evt.target.result, {type:'binary'});
+      const provName = wb.SheetNames.find(n => normalizeHeader(n).includes('proveedores'));
+      if(!provName) throw new Error('No se encontró la hoja "Proveedores".');
+      const prov = parseProveedoresSheet(wb.Sheets[provName]);
+      const tarifas = new Map();
+      wb.SheetNames.filter(n => n !== provName).forEach(n => parseProviderSheet(n, wb.Sheets[n], tarifas));
+      if(!tarifas.size) throw new Error('No se detectaron bloques de tarifario (ej. P1-1) en las hojas de proveedor.');
+      PROV_MAP = prov; TARIFAS = tarifas;
+      saveTarifas();
+      renderTarifaTable();
+      if(lastResultsBT.length) renderResultsBT(lastResultsBT);
+      statusEl.textContent = `Tarifario cargado: ${PROV_MAP.size} tiendas, ${TARIFAS.size} tarifarios.`;
+      statusEl.className = 'status ok';
+    }catch(err){
+      statusEl.textContent = 'Error al leer el tarifario: ' + err.message;
+      statusEl.className = 'status err';
+    }
+    e.target.value = '';
+  };
+  reader.readAsBinaryString(file);
+});
+
+document.getElementById('btnExportTarifa').addEventListener('click', () => {
+  const statusEl = document.getElementById('statusTarifa');
+  if(!TARIFAS.size){ statusEl.textContent = 'No hay tarifario cargado.'; statusEl.className = 'status err'; return; }
+  const data = {version:1, tipo:'tarifario', fecha: new Date().toISOString(), PROV_MAP: [...PROV_MAP], TARIFAS: [...TARIFAS]};
+  const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'tarifario.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  statusEl.textContent = 'tarifario.json descargado. Guárdalo en tu OneDrive.';
+  statusEl.className = 'status ok';
+});
+
+document.getElementById('fileInputTarifaJson').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('statusTarifa');
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try{
+      const data = JSON.parse(evt.target.result);
+      if(!Array.isArray(data.TARIFAS) || !Array.isArray(data.PROV_MAP)) throw new Error('El archivo no es un tarifario.json válido.');
+      PROV_MAP = new Map(data.PROV_MAP); TARIFAS = new Map(data.TARIFAS);
+      saveTarifas();
+      renderTarifaTable();
+      if(lastResultsBT.length) renderResultsBT(lastResultsBT);
+      statusEl.textContent = `Tarifario cargado: ${PROV_MAP.size} tiendas, ${TARIFAS.size} tarifarios.`;
+      statusEl.className = 'status ok';
+    }catch(err){
+      statusEl.textContent = 'Error al leer el tarifario: ' + err.message;
+      statusEl.className = 'status err';
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('btnResetTarifa').addEventListener('click', () => {
+  PROV_MAP = new Map(); TARIFAS = new Map();
+  saveTarifas();
+  renderTarifaTable();
+  if(lastResultsBT.length) renderResultsBT(lastResultsBT);
+  document.getElementById('statusTarifa').textContent = 'Tarifario vaciado.';
+  document.getElementById('statusTarifa').className = 'status ok';
+});
+// ---------- Lote (dentro de Operaciones ST) ----------
+const TOP_N_LOTE = 5;
+let lastBatchResults = [];
+
+document.getElementById('btnBatch').addEventListener('click', async () => {
+  const raw = document.getElementById('batchInput').value.split('\n').map(l => l.trim()).filter(Boolean);
+  const statusEl = document.getElementById('statusBatch');
+  const container = document.getElementById('batchResults');
+  const card = document.getElementById('batchResultsCard');
+  const exportBtn = document.getElementById('btnExportBatch');
+  const btn = document.getElementById('btnBatch');
+
+  if(!raw.length){ statusEl.textContent = 'Agrega al menos una dirección o CP.'; statusEl.className='status err'; return; }
+  if(STORES.length === 0){ statusEl.textContent = 'No hay tiendas cargadas.'; statusEl.className='status err'; return; }
+
+  const portalFilter = document.getElementById('portalFilterIndividual').value;
+  container.innerHTML = '';
+  card.style.display = 'block';
+  lastBatchResults = [];
+  exportBtn.disabled = true;
+  btn.disabled = true;
+
+  for(let idx=0; idx<raw.length; idx++){
+    const item = raw[idx];
+    statusEl.innerHTML = `<span class="spinner"></span> Procesando ${idx+1} de ${raw.length}...`;
+    statusEl.className = 'status';
+
+    const det = document.createElement('details');
+    det.className = 'batch-item';
+    const sum = document.createElement('summary');
+    sum.innerHTML = `<span>${item}</span><span class="muted">procesando...</span>`;
+    det.appendChild(sum);
+    container.appendChild(det);
+
+    try{
+      const geo = await geocode(item);
+      const cands = rankStores(geo.lat, geo.lng, portalFilter).slice(0, TOP_N_LOTE).map(s => ({...s}));
+      if(!cands.length) throw new Error('Sin tiendas para el portal elegido');
+      for(let i=0; i<cands.length; i++){
+        try{
+          const r = await routeOSRM(cands[i].lat, cands[i].lng, geo.lat, geo.lng);
+          cands[i].route = {km: r.distanceKm, min: r.durationMin};
+        }catch(e){ cands[i].routeFail = true; }
+        if(i < cands.length-1) await sleep(300);
+      }
+      const ranked = sortByRoute(cands);
+      const top = ranked.find(s => s.route);
+      if(!top) throw new Error('Sin ruta OSRM');
+      const st = statusFor(top.route.km);
+      sum.innerHTML = `<span>${item}</span><span class="badge ${st.cls}">${top.nombre} · ${top.route.km.toFixed(2)} km · ${formatMin(top.route.min)}</span>`;
+
+      const tbl = document.createElement('table');
+      tbl.innerHTML = `<thead><tr><th>#</th><th>No.</th><th>Tienda</th><th>Portal</th><th>Distancia (ruta)</th><th>Tiempo</th><th>Estatus</th></tr></thead>
+        <tbody>${ranked.map((s,i) => {
+          if(!s.route) return `<tr><td>${i+1}</td><td>${s.numero||'-'}</td><td>${s.nombre}</td><td>${s.portal||s.zona||'-'}</td><td class="muted">sin ruta</td><td>-</td><td>-</td></tr>`;
+          const s2 = statusFor(s.route.km);
+          return `<tr class="${s===top?'rank1':''}"><td>${i+1}</td><td>${s.numero||'-'}</td><td>${s.nombre}</td><td>${s.portal||s.zona||'-'}</td><td>${s.route.km.toFixed(2)} km</td><td>${formatMin(s.route.min)}</td><td><span class="badge ${s2.cls}">${s2.label}</span></td></tr>`;
+        }).join('')}</tbody>`;
+      det.appendChild(tbl);
+
+      lastBatchResults.push({input:item, resuelto:geo.label, tienda_optima:top.nombre, numero_tienda:top.numero||'', portal:top.portal||top.zona||'', distancia_km:top.route.km.toFixed(2), tiempo_min:Math.round(top.route.min), estatus:st.label});
+    }catch(err){
+      sum.innerHTML = `<span>${item}</span><span class="badge critico">${err.message}</span>`;
+      lastBatchResults.push({input:item, resuelto:'ERROR', tienda_optima:'', numero_tienda:'', portal:'', distancia_km:'', tiempo_min:'', estatus:err.message});
+    }
+
+    if(idx < raw.length - 1) await sleep(1100);
+  }
+
+  statusEl.textContent = `Listo: ${raw.length} procesadas.`;
+  statusEl.className = 'status ok';
+  exportBtn.disabled = false;
+  btn.disabled = false;
+});
+
+document.getElementById('btnExportBatch').addEventListener('click', () => {
+  if(!lastBatchResults.length) return;
+  const headers = ['input','resuelto','tienda_optima','numero_tienda','portal','distancia_km','tiempo_min','estatus'];
+  const csv = [headers.join(',')].concat(
+    lastBatchResults.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g,'""')}"`).join(','))
+  ).join('\n');
+  const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'resultado_tiendas_lote.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ---------- Utilidades de mapeo flexible de columnas ----------
+function normalizeHeader(s){
+  return String(s).replace(/[\u00A0\s]+/g,' ').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function findKey(row, candidates){
+  const keys = Object.keys(row);
+  let hit = keys.find(k => candidates.includes(normalizeHeader(k)));
+  if(hit) return hit;
+  hit = keys.find(k => candidates.some(c => normalizeHeader(k).includes(c)));
+  return hit;
+}
+
+// ---------- Catálogo local de CPs ----------
+let CP_CATALOG = new Map();
+
+function parseCPSheet(rows){
+  const catalog = new Map();
+  rows.forEach(row => {
+    const kCP  = findKey(row, ['cp','codigo postal','cp_dest','cp_tda']);
+    const kEdo = findKey(row, ['estado_dest','estado','estado_tda']);
+    const kMun = findKey(row, ['municipio_dest','municipio','municipio_tda']);
+    const kLat = findKey(row, ['lt_dest','lat','latitud','latitude','lt_org']);
+    const kLng = findKey(row, ['lg_dest','lng','lon','long','longitud','longitude','lg_org']);
+    if(!kCP || !kLat || !kLng) return;
+    const cp = padCP(row[kCP]);
+    const lat = parseFloat(row[kLat]);
+    const lng = parseFloat(row[kLng]);
+    if(!cp || isNaN(lat) || isNaN(lng)) return;
+    catalog.set(cp, {estado: kEdo ? String(row[kEdo]).trim() : '', municipio: kMun ? String(row[kMun]).trim() : '', lat, lng});
+  });
+  return catalog;
+}
+
+function parseTiendasSheet(rows){
+  return rows.map(row => {
+    const kId     = findKey(row, ['id tienda','id_tienda','id']);
+    const kNum    = findKey(row, ['numero de tienda','numero_tienda','no tienda','no_tienda','num_tienda','numero tienda','num tienda']);
+    const kName   = findKey(row, ['tienda','nombre','store','sucursal','nombre_tda']);
+    const kZona   = findKey(row, ['zona','zona_tda']);
+    const kPortal = findKey(row, ['portal','canal','channel','marca']);
+    const kLat    = findKey(row, ['lat','latitud','latitude','lt_org']);
+    const kLng    = findKey(row, ['lng','lon','long','longitud','longitude','lg_org']);
+    const kCP     = findKey(row, ['cp','codigo postal','cp_tda']);
+    const kEdo    = findKey(row, ['estado','estado_tda']);
+    const kMun    = findKey(row, ['municipio','municipio_tda']);
+    return {
+      id: kId ? String(row[kId]).trim() : '',
+      numero: kNum ? String(row[kNum]).trim() : (kId ? String(row[kId]).trim() : ''),
+      nombre: kName ? String(row[kName]).trim() : 'Sin nombre',
+      zona: kZona ? String(row[kZona]).trim() : '',
+      portal: kPortal ? String(row[kPortal]).trim() : '',
+      lat: kLat ? parseFloat(row[kLat]) : NaN,
+      lng: kLng ? parseFloat(row[kLng]) : NaN,
+      cp: kCP ? String(row[kCP]).trim() : '',
+      estado: kEdo ? String(row[kEdo]).trim() : '',
+      municipio: kMun ? String(row[kMun]).trim() : ''
+    };
+  }).filter(s => !isNaN(s.lat) && !isNaN(s.lng));
+}
+
+function parseBigticketSheet(rows){
+  return rows.map(row => {
+    const kId     = findKey(row, ['id tienda','id_tienda','id']);
+    const kName   = findKey(row, ['nombre_tda','tienda','nombre']);
+    const kLoc    = findKey(row, ['localidad']);
+    const kAlm    = findKey(row, ['almacen','almacén']);
+    const kCP     = findKey(row, ['cp_tda','cp','codigo postal']);
+    const kZona   = findKey(row, ['zona_tda','zona']);
+    const kLat    = findKey(row, ['lt_org','lat','latitud','latitude']);
+    const kLng    = findKey(row, ['lg_org','lng','lon','long','longitud','longitude']);
+    const kEdo    = findKey(row, ['estado_tda','estado']);
+    const kMun    = findKey(row, ['municipio_tda','municipio']);
+    const kPortal = findKey(row, ['portal','canal','channel','marca']);
+    return {
+      id: kId ? String(row[kId]).trim() : '',
+      nombre: kName ? String(row[kName]).trim() : 'Sin nombre',
+      localidad: kLoc ? String(row[kLoc]).trim() : '',
+      almacen: kAlm ? String(row[kAlm]).trim() : '',
+      zona: kZona ? String(row[kZona]).trim() : '',
+      portal: kPortal ? String(row[kPortal]).trim() : '',
+      lat: kLat ? parseFloat(row[kLat]) : NaN,
+      lng: kLng ? parseFloat(row[kLng]) : NaN,
+      cp: kCP ? String(row[kCP]).trim() : '',
+      estado: kEdo ? String(row[kEdo]).trim() : '',
+      municipio: kMun ? String(row[kMun]).trim() : ''
+    };
+  }).filter(s => !isNaN(s.lat) && !isNaN(s.lng))
+    .filter(s => s.id || (s.nombre && s.nombre !== 'Sin nombre'))
+    .filter(s => {
+      // Descarta filas que en realidad son el propio almacén (encabezados, totales, etc.)
+      const nameNorm = normalizeHeader(s.nombre);
+      if(nameNorm === 'cdt' || nameNorm === 'cedis' || nameNorm.includes('cdt 870') || nameNorm.includes('cedis 850')) return false;
+      const distToCDT = haversineKm(DC_COORDS.CDT.lat, DC_COORDS.CDT.lng, s.lat, s.lng);
+      const distToCEDIS = haversineKm(DC_COORDS.CEDIS.lat, DC_COORDS.CEDIS.lng, s.lat, s.lng);
+      if(distToCDT < 0.05 || distToCEDIS < 0.05) return false; // coordenadas idénticas al almacén = fila inválida
+      return true;
+    });
+}
+
+// ---------- Carga de archivo (Tiendas) — soporta 1 o varios archivos ----------
+let pendingWBTiendas = null;
+
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  const files = Array.from(e.target.files || []);
+  if(!files.length) return;
+  const statusEl = document.getElementById('statusFile');
+  const append = document.getElementById('appendModeTiendas').checked;
+
+  if(files.length === 1){
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try{
+        const wb = XLSX.read(evt.target.result, {type:'binary'});
+        pendingWBTiendas = {wb, fileName: file.name};
+        const nonCP = wb.SheetNames.filter(n => !normalizeHeader(n).includes('cpmex'));
+        const sel = document.getElementById('sheetPickerTiendas');
+        sel.innerHTML = nonCP.map(n => `<option value="${n}">${n}</option>`).join('');
+        if(nonCP.length > 1){
+          document.getElementById('sheetPickerTiendas').classList.add('show');
+          document.getElementById('btnLoadSheetTiendas').classList.add('show');
+          statusEl.textContent = 'Archivo leído. Elige la hoja a cargar.';
+          statusEl.className = 'status ok';
+        } else {
+          loadTiendasSheet(nonCP[0], wb, file.name, append);
+        }
+      }catch(err){
+        statusEl.textContent = 'Error al leer el archivo: ' + err.message;
+        statusEl.className = 'status err';
+      }
+    };
+    reader.readAsBinaryString(file);
+    return;
+  }
+
+  // Varios archivos: se procesan en cadena, auto-detectando la hoja de tiendas de cada uno
+  statusEl.innerHTML = '<span class="spinner"></span> Procesando archivos...';
+  statusEl.className = 'status';
+  let combined = append ? STORES.slice() : [];
+  let cpCountTotal = 0;
+  let filesProcessed = 0;
+  const readNext = (idx) => {
+    if(idx >= files.length){
+      STORES = combined;
+      if(typeof selectedStores !== 'undefined') selectedStores.clear();
+      renderStoreTable();
+      renderSelectedChips();
+      statusEl.textContent = `${STORES.length} tiendas cargadas de ${filesProcessed} archivo(s).` + (cpCountTotal ? ` Catálogo de CPs actualizado (${CP_CATALOG.size.toLocaleString('es-MX')}).` : '');
+      statusEl.className = 'status ok';
+      return;
+    }
+    const file = files[idx];
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try{
+        const wb = XLSX.read(evt.target.result, {type:'binary'});
+        const cpSheetName = wb.SheetNames.find(n => normalizeHeader(n).includes('cpmex'));
+        if(cpSheetName){
+          const cpRows = XLSX.utils.sheet_to_json(wb.Sheets[cpSheetName], {defval:''});
+          const parsedCP = parseCPSheet(cpRows);
+          parsedCP.forEach((v,k) => CP_CATALOG.set(k,v));
+          saveCPCatalog();
+          cpCountTotal += parsedCP.size;
+        }
+        const nonCP = wb.SheetNames.filter(n => !normalizeHeader(n).includes('cpmex'));
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[nonCP[0]], {defval:''});
+        combined = combined.concat(parseTiendasSheet(rows));
+        filesProcessed++;
+      }catch(err){ /* archivo con error, se ignora y continúa */ }
+      readNext(idx+1);
+    };
+    reader.readAsBinaryString(file);
+  };
+  readNext(0);
+});
+
+document.getElementById('btnLoadSheetTiendas').addEventListener('click', () => {
+  if(!pendingWBTiendas) return;
+  const sheetName = document.getElementById('sheetPickerTiendas').value;
+  const append = document.getElementById('appendModeTiendas').checked;
+  loadTiendasSheet(sheetName, pendingWBTiendas.wb, pendingWBTiendas.fileName, append);
+});
+
+function loadTiendasSheet(sheetName, wb, fileName, append){
+  const statusEl = document.getElementById('statusFile');
+  try{
+    const cpSheetName = wb.SheetNames.find(n => normalizeHeader(n).includes('cpmex'));
+    let cpCount = 0;
+    if(cpSheetName){
+      const cpRows = XLSX.utils.sheet_to_json(wb.Sheets[cpSheetName], {defval:''});
+      const parsedCP = parseCPSheet(cpRows);
+      parsedCP.forEach((v,k) => CP_CATALOG.set(k,v));
+      cpCount = CP_CATALOG.size;
+      saveCPCatalog();
+    }
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {defval:''});
+    const parsed = parseTiendasSheet(rows);
+    if(!parsed.length) throw new Error('No se encontraron filas válidas con lat/lng.');
+    STORES = append ? STORES.concat(parsed) : parsed;
+    if(typeof selectedStores !== 'undefined') selectedStores.clear();
+    renderStoreTable();
+    renderSelectedChips();
+    document.getElementById('sheetPickerTiendas').classList.remove('show');
+    document.getElementById('btnLoadSheetTiendas').classList.remove('show');
+    statusEl.textContent = `${parsed.length} tiendas ${append?'agregadas':'cargadas'} de la hoja "${sheetName}" (total: ${STORES.length}).` + (cpCount ? ` Catálogo de CPs cargado (${cpCount.toLocaleString('es-MX')}).` : '');
+    statusEl.className = 'status ok';
+  }catch(err){
+    statusEl.textContent = 'Error al procesar la hoja: ' + err.message;
+    statusEl.className = 'status err';
+  }
+}
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  STORES = JSON.parse(JSON.stringify(SAMPLE_STORES));
+  if(typeof selectedStores !== 'undefined') selectedStores.clear();
+  renderStoreTable();
+  renderSelectedChips();
+  document.getElementById('statusFile').textContent = 'Restaurado a datos de ejemplo.';
+  document.getElementById('statusFile').className = 'status ok';
+});
+
+// ---------- Carga de archivo (Bigticket) — soporta 1 o varios archivos ----------
+let pendingWBBT = null;
+
+document.getElementById('fileInputBT').addEventListener('change', (e) => {
+  const files = Array.from(e.target.files || []);
+  if(!files.length) return;
+  const statusEl = document.getElementById('statusFileBT');
+  const append = document.getElementById('appendModeBT').checked;
+
+  if(files.length === 1){
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try{
+        const wb = XLSX.read(evt.target.result, {type:'binary'});
+        pendingWBBT = {wb, fileName: file.name};
+        const sel = document.getElementById('sheetPickerBT');
+        sel.innerHTML = wb.SheetNames.map(n => `<option value="${n}">${n}</option>`).join('');
+        const guess = wb.SheetNames.find(n => normalizeHeader(n).includes('bigticket') || normalizeHeader(n).includes('big ticket'));
+        if(guess) sel.value = guess;
+        if(wb.SheetNames.length > 1){
+          document.getElementById('sheetPickerBT').classList.add('show');
+          document.getElementById('btnLoadSheetBT').classList.add('show');
+          statusEl.textContent = 'Archivo leído. Elige la hoja Bigticket a cargar.';
+          statusEl.className = 'status ok';
+        } else {
+          loadBTSheet(wb.SheetNames[0], wb, file.name, append);
+        }
+      }catch(err){
+        statusEl.textContent = 'Error al leer el archivo: ' + err.message;
+        statusEl.className = 'status err';
+      }
+    };
+    reader.readAsBinaryString(file);
+    return;
+  }
+
+  // Varios archivos: se procesan en cadena, auto-detectando la hoja Bigticket de cada uno
+  statusEl.innerHTML = '<span class="spinner"></span> Procesando archivos...';
+  statusEl.className = 'status';
+  let combined = append ? STORES_BT.slice() : [];
+  let filesProcessed = 0;
+  const readNext = (idx) => {
+    if(idx >= files.length){
+      STORES_BT = combined;
+      renderStoreTableBT();
+      statusEl.textContent = `${STORES_BT.length} tiendas Bigticket cargadas de ${filesProcessed} archivo(s).`;
+      statusEl.className = 'status ok';
+      return;
+    }
+    const file = files[idx];
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try{
+        const wb = XLSX.read(evt.target.result, {type:'binary'});
+        const guess = wb.SheetNames.find(n => normalizeHeader(n).includes('bigticket') || normalizeHeader(n).includes('big ticket')) || wb.SheetNames[0];
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[guess], {defval:''});
+        combined = combined.concat(parseBigticketSheet(rows));
+        filesProcessed++;
+      }catch(err){ /* archivo con error, se ignora y continúa */ }
+      readNext(idx+1);
+    };
+    reader.readAsBinaryString(file);
+  };
+  readNext(0);
+});
+
+document.getElementById('btnLoadSheetBT').addEventListener('click', () => {
+  if(!pendingWBBT) return;
+  const sheetName = document.getElementById('sheetPickerBT').value;
+  const append = document.getElementById('appendModeBT').checked;
+  loadBTSheet(sheetName, pendingWBBT.wb, pendingWBBT.fileName, append);
+});
+
+function loadBTSheet(sheetName, wb, fileName, append){
+  const statusEl = document.getElementById('statusFileBT');
+  try{
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {defval:''});
+    const parsed = parseBigticketSheet(rows);
+    if(!parsed.length) throw new Error('No se encontraron filas válidas con LT_org/LG_org.');
+    STORES_BT = append ? STORES_BT.concat(parsed) : parsed;
+    renderStoreTableBT();
+    document.getElementById('sheetPickerBT').classList.remove('show');
+    document.getElementById('btnLoadSheetBT').classList.remove('show');
+    statusEl.textContent = `${parsed.length} tiendas Bigticket ${append?'agregadas':'cargadas'} de la hoja "${sheetName}" (total: ${STORES_BT.length}).`;
+    statusEl.className = 'status ok';
+  }catch(err){
+    statusEl.textContent = 'Error al procesar la hoja: ' + err.message;
+    statusEl.className = 'status err';
+  }
+}
+
+document.getElementById('btnResetBT').addEventListener('click', () => {
+  STORES_BT = [];
+  renderStoreTableBT();
+  document.getElementById('resultCardBT').style.display = 'none';
+  document.getElementById('statusFileBT').textContent = 'Base Bigticket vaciada.';
+  document.getElementById('statusFileBT').className = 'status ok';
+});
+
+// ---------- Tabs ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab === 'individual') setTimeout(() => { if(map) map.invalidateSize(); }, 50);
+  });
+});
+
+// ================= DASHBOARD COMPARATIVO (Tiendas) =================
+let dashCustomer = null;
+let map = null, markersLayer = null, routeLayer = null;
+let selectedStores = new Map();
+
+function storeKey(s){ return `${s.numero}|${s.nombre}|${s.lat}|${s.lng}`; }
+
+function visibleStoreList(){
+  const portalFilter = document.getElementById('portalFilterDash') ? document.getElementById('portalFilterDash').value : '';
+  const searchTxt = document.getElementById('storeSearchDash') ? document.getElementById('storeSearchDash').value.trim().toLowerCase() : '';
+  let visible = STORES.filter(s => !portalFilter || (s.portal || s.zona || 'Sin portal') === portalFilter);
+  if(searchTxt){
+    visible = visible.filter(s => String(s.numero||'').toLowerCase().includes(searchTxt) || String(s.nombre||'').toLowerCase().includes(searchTxt));
+  }
+  return visible;
+}
+
+function renderStorePicker(){
+  const wrap = document.getElementById('storePicker');
+  if(!wrap) return;
+  const visible = visibleStoreList();
+  wrap.innerHTML = visible.map(s => {
+    const key = storeKey(s);
+    const added = selectedStores.has(key);
+    return `<label class="store-check">
+      <span><div class="sc-name">${s.numero ? s.numero+' · ' : ''}${s.nombre}</div><div class="sc-meta">${s.portal||s.zona||'-'} · ${s.municipio||''}</div></span>
+      <button type="button" class="sc-add ${added?'added':''}" onclick="toggleStoreSelection('${key.replace(/'/g,"\\'")}')">${added?'✓ Agregada':'+ Agregar'}</button>
+    </label>`;
+  }).join('') || '<span class="muted">No hay tiendas que coincidan con la búsqueda.</span>';
+  wrap.dataset.storesJson = JSON.stringify(visible);
+}
+
+function toggleStoreSelection(key){
+  if(selectedStores.has(key)){ selectedStores.delete(key); }
+  else{
+    const visible = JSON.parse(document.getElementById('storePicker').dataset.storesJson || '[]');
+    const store = visible.find(s => storeKey(s) === key);
+    if(store) selectedStores.set(key, store);
+  }
+  renderStorePicker();
+  renderSelectedChips();
+}
+
+function renderSelectedChips(){
+  const wrap = document.getElementById('selectedChips');
+  const items = [...selectedStores.values()];
+  if(!items.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  wrap.style.display = 'flex';
+  wrap.style.flexWrap = 'wrap';
+  wrap.innerHTML = items.map(s => {
+    const key = storeKey(s);
+    return `<span class="chip">${s.numero ? s.numero+' · ' : ''}${s.nombre}<button type="button" onclick="toggleStoreSelection('${key.replace(/'/g,"\\'")}')">×</button></span>`;
+  }).join('');
+}
+
+document.getElementById('portalFilterDash').addEventListener('change', renderStorePicker);
+document.getElementById('storeSearchDash').addEventListener('input', renderStorePicker);
+document.getElementById('btnSelectAll').addEventListener('click', () => { visibleStoreList().forEach(s => selectedStores.set(storeKey(s), s)); renderStorePicker(); renderSelectedChips(); });
+document.getElementById('btnSelectNone').addEventListener('click', () => { selectedStores.clear(); renderStorePicker(); renderSelectedChips(); });
+
+// ================= Selector de tiendas Bigticket =================
+let selectedStoresBT = new Map();
+
+function storeKeyBT(s){ return `${s.id}|${s.nombre}|${s.lat}|${s.lng}`; }
+
+function visibleStoreListBT(){
+  const almacenFilter = document.getElementById('almacenFilterBT') ? document.getElementById('almacenFilterBT').value : '';
+  const portalFilter = document.getElementById('portalFilterBT') ? document.getElementById('portalFilterBT').value : '';
+  const searchTxt = document.getElementById('storeSearchBT') ? document.getElementById('storeSearchBT').value.trim().toLowerCase() : '';
+  let visible = btSource().filter(s => !portalFilter || (s.portal || 'Sin portal') === portalFilter);
+  if(almacenFilter) visible = visible.filter(s => effAlmacen(s) === almacenFilter);
+  if(searchTxt) visible = visible.filter(s => String(s.id||'').toLowerCase().includes(searchTxt) || String(s.nombre||'').toLowerCase().includes(searchTxt));
+  return visible;
+}
+
+function renderStorePickerBT(){
+  const wrap = document.getElementById('storePickerBT');
+  if(!wrap) return;
+  const visible = visibleStoreListBT();
+  wrap.innerHTML = visible.map(s => {
+    const key = storeKeyBT(s);
+    const added = selectedStoresBT.has(key);
+    return `<label class="store-check">
+      <span><div class="sc-name">${s.id ? s.id+' · ' : ''}${s.nombre}</div><div class="sc-meta">${s.almacen || (DC_COORDS[nearestDC(s)].label + ' (cercano)')} · ${s.municipio||''}</div></span>
+      <button type="button" class="sc-add ${added?'added':''}" onclick="toggleStoreSelectionBT('${key.replace(/'/g,"\\'")}')">${added?'✓ Agregada':'+ Agregar'}</button>
+    </label>`;
+  }).join('') || '<span class="muted">No hay tiendas Bigticket que coincidan.</span>';
+  wrap.dataset.storesJson = JSON.stringify(visible);
+}
+
+function toggleStoreSelectionBT(key){
+  if(selectedStoresBT.has(key)){ selectedStoresBT.delete(key); }
+  else{
+    const visible = JSON.parse(document.getElementById('storePickerBT').dataset.storesJson || '[]');
+    const store = visible.find(s => storeKeyBT(s) === key);
+    if(store) selectedStoresBT.set(key, store);
+  }
+  renderStorePickerBT();
+  renderSelectedChipsBT();
+}
+
+function renderSelectedChipsBT(){
+  const wrap = document.getElementById('selectedChipsBT');
+  const items = [...selectedStoresBT.values()];
+  if(!items.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  wrap.style.display = 'flex';
+  wrap.style.flexWrap = 'wrap';
+  wrap.innerHTML = items.map(s => {
+    const key = storeKeyBT(s);
+    return `<span class="chip">${s.id ? s.id+' · ' : ''}${s.nombre}<button type="button" onclick="toggleStoreSelectionBT('${key.replace(/'/g,"\\'")}')">×</button></span>`;
+  }).join('');
+}
+
+document.getElementById('portalFilterBT').addEventListener('change', renderStorePickerBT);
+document.getElementById('modoBT').addEventListener('change', () => {
+  selectedStoresBT.clear();
+  populatePortalFilterBT();
+  renderStorePickerBT();
+  renderSelectedChipsBT();
+});
+document.getElementById('almacenFilterBT').addEventListener('change', renderStorePickerBT);
+document.getElementById('storeSearchBT').addEventListener('input', renderStorePickerBT);
+document.getElementById('btnSelectAllBT').addEventListener('click', () => { visibleStoreListBT().forEach(s => selectedStoresBT.set(storeKeyBT(s), s)); renderStorePickerBT(); renderSelectedChipsBT(); });
+document.getElementById('btnSelectNoneBT').addEventListener('click', () => { selectedStoresBT.clear(); renderStorePickerBT(); renderSelectedChipsBT(); });
+
+// ---------- Capas base del mapa (selector arriba a la derecha) ----------
+function addBaseLayers(m){
+  const capas = {
+    'Gris claro': L.layerGroup([
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {maxZoom:16, attribution:'Tiles &copy; Esri'}),
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {maxZoom:16})
+    ]),
+    'OpenStreetMap': L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap'}),
+    'Calles (Esri)': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'Tiles &copy; Esri'}),
+    'Satélite': L.layerGroup([
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'Tiles &copy; Esri'}),
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {maxZoom:19})
+    ])
+  };
+  let pref = 'Gris claro';
+  try{ const s = localStorage.getItem('localizador_basemap'); if(s && capas[s]) pref = s; }catch(e){}
+  capas[pref].addTo(m);
+  L.control.layers(capas, null, {position:'topright', collapsed:true}).addTo(m);
+  m.on('baselayerchange', e => { try{ localStorage.setItem('localizador_basemap', e.name); }catch(err){} });
+}
+
+function initMap(){
+  if(map) return;
+  map = L.map('compareMap').setView([23.6, -102.5], 5);
+  addBaseLayers(map);
+  markersLayer = L.layerGroup().addTo(map);
+  routeLayer = L.layerGroup().addTo(map);
+}
+
+async function routeOSRM(lat1, lng1, lat2, lng2){
+  const url = `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`;
+  const resp = await fetch(url);
+  if(!resp.ok) throw new Error('Servicio de ruteo no disponible');
+  const data = await resp.json();
+  if(data.code !== 'Ok' || !data.routes.length) throw new Error('Sin ruta disponible');
+  const r = data.routes[0];
+  return {distanceKm: r.distance / 1000, durationMin: r.duration / 60, coords: r.geometry.coordinates.map(c => [c[1], c[0]])};
+}
+
+let lastCompareResults = [];
+
+document.getElementById('btnCompare').addEventListener('click', async () => {
+  const statusEl = document.getElementById('statusCompare');
+  const exportBtn = document.getElementById('btnExportCompare');
+  if(!dashCustomer){ statusEl.textContent = 'Primero busca la dirección del cliente arriba.'; statusEl.className='status err'; return; }
+  const selectedList = [...selectedStores.values()];
+  if(!selectedList.length){ statusEl.textContent = 'Agrega al menos una tienda a la selección.'; statusEl.className='status err'; return; }
+
+  initMap();
+  document.getElementById('compareCard').style.display = 'block';
+  document.getElementById('compareResultsCard').style.display = 'none';
+  setTimeout(() => map.invalidateSize(), 50);
+  markersLayer.clearLayers();
+  routeLayer.clearLayers();
+  exportBtn.disabled = true;
+  lastCompareResults = [];
+
+  L.marker([dashCustomer.lat, dashCustomer.lng], {icon: L.divIcon({className:'', html:`<div style="width:16px;height:16px;border-radius:50%;background:#2E86AB;border:2px solid #fff;box-shadow:0 0 0 1px #2E86AB;"></div>`, iconSize:[16,16]})}).bindPopup('Domicilio del cliente').addTo(markersLayer);
+
+  const bounds = [[dashCustomer.lat, dashCustomer.lng]];
+  const results = [];
+
+  for(let i=0; i<selectedList.length; i++){
+    const s = selectedList[i];
+    statusEl.innerHTML = `<span class="spinner"></span> Calculando ruta ${i+1} de ${selectedList.length}...`;
+    statusEl.className = 'status';
+    try{
+      const r = await routeOSRM(dashCustomer.lat, dashCustomer.lng, s.lat, s.lng);
+      results.push({...s, distKm: r.distanceKm, durMin: r.durationMin, coords: r.coords});
+    }catch(err){
+      results.push({...s, distKm: null, durMin: null, error: err.message});
+    }
+    if(i < selectedList.length - 1) await sleep(350);
+  }
+
+  results.sort((a,b) => { if(a.distKm === null) return 1; if(b.distKm === null) return -1; return a.distKm - b.distKm; });
+
+  const colorFor = (cls) => cls==='optimo' ? '#2E7D32' : cls==='alerta' ? '#B8860B' : '#B03A2E';
+
+  const body = document.getElementById('compareBody');
+  body.innerHTML = results.map((s,i) => {
+    if(s.distKm === null){
+      return `<tr><td>${i+1}</td><td>${s.nombre}</td><td>${s.portal||s.zona||'-'}</td><td colspan="2" class="muted">${s.error}</td><td>-</td></tr>`;
+    }
+    const st = statusFor(s.distKm);
+    bounds.push([s.lat, s.lng]);
+    L.marker([s.lat, s.lng], {icon: L.divIcon({className:'', html:`<div style="width:14px;height:14px;border-radius:50%;background:${colorFor(st.cls)};border:2px solid #fff;box-shadow:0 0 0 1px ${colorFor(st.cls)};"></div>`, iconSize:[14,14]})}).bindPopup(`<b>${s.nombre}</b><br>${s.distKm.toFixed(2)} km · ${Math.round(s.durMin)} min`).addTo(markersLayer);
+    if(s.coords) L.polyline(s.coords, {color: colorFor(st.cls), weight: 3, opacity: .7}).addTo(routeLayer);
+    return `<tr class="${i===0?'rank1':''}"><td>${i+1}</td><td>${s.nombre}</td><td>${s.portal||s.zona||'-'}</td><td>${s.distKm.toFixed(2)} km</td><td>${Math.round(s.durMin)} min</td><td><span class="badge ${st.cls}">${st.label}</span></td></tr>`;
+  }).join('');
+
+  document.getElementById('compareResultsCard').style.display = 'block';
+  if(bounds.length > 1) map.fitBounds(bounds, {padding:[30,30]});
+
+  lastCompareResults = results;
+  exportBtn.disabled = false;
+  statusEl.textContent = `Listo: ${results.length} tienda(s) comparada(s).`;
+  statusEl.className = 'status ok';
+});
+
+document.getElementById('btnExportCompare').addEventListener('click', () => {
+  if(!lastCompareResults.length) return;
+  const headers = ['tienda','portal','distancia_km','tiempo_min','estatus'];
+  const rows = lastCompareResults.map(s => ({
+    tienda: s.nombre, portal: s.portal || s.zona || '',
+    distancia_km: s.distKm !== null ? s.distKm.toFixed(2) : '',
+    tiempo_min: s.durMin !== null ? Math.round(s.durMin) : '',
+    estatus: s.distKm !== null ? statusFor(s.distKm).label : (s.error || '')
+  }));
+  const csv = [headers.join(',')].concat(rows.map(r => headers.map(h => `"${String(r[h]).replace(/"/g,'""')}"`).join(','))).join('\n');
+  const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'comparativo_tiendas.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ---------- Respaldo manual (JSON) ----------
+document.getElementById('btnExportBackup').addEventListener('click', () => {
+  const backup = {version:2, tipo:'bases', fecha: new Date().toISOString(), STORES, STORES_BT, CP_CATALOG: [...CP_CATALOG]};
+  const blob = new Blob([JSON.stringify(backup)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'bases.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  document.getElementById('statusBackup').textContent = `bases.json descargado: ${STORES.length} tiendas, ${STORES_BT.length} Bigticket, ${CP_CATALOG.size.toLocaleString('es-MX')} CPs.` + (CP_CATALOG.size ? '' : ' ⚠ Sin catálogo CP: sube primero el archivo de Tiendas con la hoja CPmex.');
+  document.getElementById('statusBackup').className = 'status ok';
+});
+
+document.getElementById('fileInputBackup').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('statusBackup');
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try{
+      applyBackup(JSON.parse(evt.target.result));
+      statusEl.textContent = `Respaldo cargado: ${STORES.length} tiendas, ${STORES_BT.length} Bigticket, ${CP_CATALOG.size.toLocaleString('es-MX')} CPs.`;
+      statusEl.className = 'status ok';
+    }catch(err){
+      statusEl.textContent = 'Error al leer el respaldo: ' + err.message;
+      statusEl.className = 'status err';
+    }
+  };
+  reader.readAsText(file);
+});
+
+function applyBackup(backup){
+  if(Array.isArray(backup.STORES)) STORES = backup.STORES;
+  if(Array.isArray(backup.STORES_BT)) STORES_BT = backup.STORES_BT;
+  if(Array.isArray(backup.CP_CATALOG)) CP_CATALOG = new Map(backup.CP_CATALOG);
+  if(Array.isArray(backup.PROV_MAP) && Array.isArray(backup.TARIFAS)){
+    PROV_MAP = new Map(backup.PROV_MAP); TARIFAS = new Map(backup.TARIFAS);
+    saveTarifas();
+    renderTarifaTable();
+  }
+  if(typeof selectedStores !== 'undefined') selectedStores.clear();
+  if(typeof selectedStoresBT !== 'undefined') selectedStoresBT.clear();
+  renderStoreTable();
+  renderStoreTableBT();
+  renderSelectedChips();
+  renderSelectedChipsBT();
+  saveCPCatalog();
+}
+
+// ---------- Carga remota (URL raw de GitHub u otra fuente pública) ----------
+const LS_REMOTE_URL = 'localizador_remote_url';
+
+async function loadFromRemoteUrl(url, statusElId){
+  const statusEl = document.getElementById(statusElId);
+  statusEl.innerHTML = '<span class="spinner"></span> Descargando respaldo...';
+  statusEl.className = 'status';
+  try{
+    const resp = await fetch(url, {cache:'no-store'});
+    if(!resp.ok) throw new Error(`No se pudo descargar (HTTP ${resp.status}). Verifica que sea la URL "raw" y que el repo sea público.`);
+    const backup = await resp.json();
+    applyBackup(backup);
+    statusEl.textContent = `Cargado desde URL: ${STORES.length} tiendas, ${STORES_BT.length} Bigticket, ${CP_CATALOG.size.toLocaleString('es-MX')} CPs.`;
+    statusEl.className = 'status ok';
+  }catch(err){
+    statusEl.textContent = 'Error al cargar desde URL: ' + err.message;
+    statusEl.className = 'status err';
+  }
+}
+
+document.getElementById('btnLoadRemote').addEventListener('click', () => {
+  const url = document.getElementById('remoteUrlInput').value.trim();
+  if(!url){ const el=document.getElementById('statusRemote'); el.textContent='Pega primero la URL raw del respaldo.'; el.className='status err'; return; }
+  if(document.getElementById('rememberRemoteUrl').checked){
+    try{ localStorage.setItem(LS_REMOTE_URL, url); }catch(e){}
+  }
+  loadFromRemoteUrl(url, 'statusRemote');
+});
+
+// ================= ALERTAS DE COTIZACIÓN (concilias CC_SE) =================
+const LS_OSRM_CACHE = 'localizador_osrm_cache_v1';
+const ALERT_PAGE_SIZE = 100;
+let OSRM_CACHE = new Map();
+let ALERT_ROWS = [];
+let alertFiles = [];
+let alertPage = 0;
+let alertStop = false;
+let alertRunning = false;
+
+function loadOsrmCache(){ try{ const c = localStorage.getItem(LS_OSRM_CACHE); if(c) OSRM_CACHE = new Map(JSON.parse(c)); }catch(e){ OSRM_CACHE = new Map(); } }
+function saveOsrmCache(){ try{ localStorage.setItem(LS_OSRM_CACHE, JSON.stringify([...OSRM_CACHE])); }catch(e){ /* sin espacio: el caché sigue en memoria */ } }
+function coordKey(o, d){ return `${o.lat.toFixed(5)},${o.lng.toFixed(5)}>${d.lat.toFixed(5)},${d.lng.toFixed(5)}`; }
+
+function alDefaultVol(){ const v = parseFloat(document.getElementById('volDefaultAl').value); return isNaN(v) || v <= 0 ? 0 : v; }
+function alUmbral(){ const v = parseFloat(document.getElementById('umbralAl').value); return (isNaN(v) ? 10 : v) / 100; }
+
+function renderReqAl(){
+  const ok = (b) => b ? '✓' : '✗';
+  document.getElementById('reqAl').innerHTML =
+    `${ok(STORES.length)} Tiendas (${STORES.length}) · ${ok(CP_CATALOG.size)} Catálogo CP (${CP_CATALOG.size.toLocaleString('es-MX')}) · ${ok(TARIFAS.size)} Tarifario (${TARIFAS.size}) · Caché de rutas: ${OSRM_CACHE.size.toLocaleString('es-MX')}`;
+}
+
+// Lee el Excel de pedidos: Pedido, Guía, Carrier, Venta, Tienda, CP (nombres flexibles)
+function parsePedidosSheet(ws){
+  const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+  if(!rows.length) throw new Error('El archivo no tiene registros.');
+  const r0 = rows[0];
+  const k = {
+    pedido:  findKey(r0, ['pedido','num_pedido','no pedido','no. pedido','numero de pedido']),
+    guia:    findKey(r0, ['guia','guia_pedido','no guia']),
+    carrier: findKey(r0, ['carrier','carrier_pedido','paqueteria']),
+    venta:   findKey(r0, ['venta','precio_venta_producto','precio venta','importe','monto']),
+    tienda:  findKey(r0, ['tienda','tiendatrans','no tienda','tienda origen']),
+    cp:      findKey(r0, ['cp','codigopostal','codigo postal','cp cliente'])
+  };
+  const faltan = Object.entries(k).filter(([n,v]) => !v && n !== 'guia' && n !== 'carrier').map(([n]) => n);
+  if(faltan.length) throw new Error(`Faltan columnas: ${faltan.join(', ')}.`);
+  const out = [];
+  rows.forEach(r => {
+    const tienda = normStoreId(r[k.tienda]);
+    const cpRaw = String(r[k.cp] ?? '').trim();
+    if(!tienda || tienda === '0' || !cpRaw) return;
+    out.push({
+      pedido: String(r[k.pedido] ?? '').trim(), guia: k.guia ? String(r[k.guia] ?? '').trim() : '',
+      carrier: k.carrier ? String(r[k.carrier] ?? '').trim() : '', venta: parseMoney(r[k.venta]) || 0,
+      tienda, cp: padCP(cpRaw), volManual: null, km: null, min: null, routeFail: false
+    });
+  });
+  return out;
+}
+
+function buildOrigenMap(){
+  const m = new Map();
+  STORES.forEach(s => {
+    [s.numero, s.id].forEach(k => { const id = normStoreId(k); if(id && !m.has(id)) m.set(id, {lat:s.lat, lng:s.lng, nombre:s.nombre}); });
+  });
+  STORES_BT.forEach(s => { const id = normStoreId(s.id); if(id && !m.has(id)) m.set(id, {lat:s.lat, lng:s.lng, nombre:s.nombre}); });
+  if(!m.has('870')) m.set('870', {lat:DC_COORDS.CDT.lat, lng:DC_COORDS.CDT.lng, nombre:'CDT 870'});
+  if(!m.has('850')) m.set('850', {lat:DC_COORDS.CEDIS.lat, lng:DC_COORDS.CEDIS.lng, nombre:'CEDIS 850'});
+  return m;
+}
+
+async function osrmTable(orig, dests){
+  const coords = [`${orig.lng},${orig.lat}`].concat(dests.map(d => `${d.lng},${d.lat}`)).join(';');
+  const url = `https://router.project-osrm.org/table/v1/driving/${coords}?sources=0&annotations=distance,duration`;
+  for(let intento = 0; intento < 2; intento++){
+    try{
+      const resp = await fetch(url);
+      if(!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      if(data.code !== 'Ok') throw new Error(data.code);
+      return dests.map((d,j) => {
+        const dist = data.distances[0][j+1], dur = data.durations[0][j+1];
+        return dist === null || dist === undefined ? null : {km: dist/1000, min: dur/60};
+      });
+    }catch(e){
+      if(intento === 0) await sleep(2500);
+    }
+  }
+  return null;
+}
+
+function evalAlert(r){
+  const vol = r.volManual !== null ? r.volManual : alDefaultVol();
+  const umbral = alUmbral();
+  r.vol = vol; r.prov = ''; r.tarifario = ''; r.precio = null; r.rango = ''; r.cot = null; r.var = null; r.nota = '';
+  if(!r.orig){ r.accion = 'Revisar'; r.nota = 'Tienda sin coordenadas'; return; }
+  if(!r.dest){ r.accion = 'Revisar'; r.nota = 'CP no encontrado en catálogo'; return; }
+  if(r.km === null){ r.accion = 'Revisar'; r.nota = r.routeFail ? 'Sin ruta OSRM' : 'Ruta pendiente'; return; }
+  const q = cotizarTienda(r.tienda, r.km, vol);
+  if(!q.opciones.length){ r.accion = 'Sin tarifario'; r.nota = 'Tienda sin proveedor'; return; }
+  const o = q.opciones[0];
+  r.prov = o.hoja; r.tarifario = o.tarifario;
+  if(o.precio === null){
+    if(/Excede/i.test(o.msg)){ r.accion = 'Alerta'; r.nota = o.msg; }
+    else { r.accion = 'Sin tarifario'; r.nota = o.msg; }
+    return;
+  }
+  r.precio = o.precio; r.rango = o.rango || '';
+  if(!vol){ r.accion = 'Captura volumen'; return; }
+  r.cot = o.precio * vol;
+  r.var = r.venta > 0 ? r.cot / r.venta : null;
+  r.accion = r.var !== null && r.var > umbral ? 'Cancelar' : 'Enrutar';
+}
+
+const ACCION_CLS = {'Cancelar':'critico', 'Alerta':'alerta', 'Enrutar':'optimo', 'Revisar':'neutral', 'Sin tarifario':'neutral', 'Captura volumen':'local'};
+
+function filteredAlerts(){
+  const acc = document.getElementById('accionFilterAl').value;
+  const q = document.getElementById('searchAl').value.trim().toLowerCase();
+  return ALERT_ROWS.filter(r => (!acc || r.accion === acc) &&
+    (!q || r.pedido.toLowerCase().includes(q) || r.guia.toLowerCase().includes(q) || r.tienda.toLowerCase().includes(q) || r.cp.includes(q)));
+}
+
+function renderKpisAl(){
+  const cnt = {};
+  let ventaRiesgo = 0, costoRiesgo = 0;
+  ALERT_ROWS.forEach(r => {
+    cnt[r.accion] = (cnt[r.accion] || 0) + 1;
+    if(r.accion === 'Cancelar'){ ventaRiesgo += r.venta; costoRiesgo += r.cot || 0; }
+  });
+  const k = (label, val, color) => `<div class="kpi"><span class="muted">${label}</span><b style="${color ? 'color:'+color : ''}">${val}</b></div>`;
+  const pct = (n) => ALERT_ROWS.length ? ` <span class="muted" style="font-size:12px;">${(n/ALERT_ROWS.length*100).toFixed(1)}%</span>` : '';
+  document.getElementById('kpisAl').innerHTML =
+    k('Pedidos analizados', ALERT_ROWS.length.toLocaleString('es-MX')) +
+    k('Cancelar (> umbral)', (cnt['Cancelar']||0).toLocaleString('es-MX') + pct(cnt['Cancelar']||0), 'var(--critico)') +
+    k('Alerta (excede reparto)', (cnt['Alerta']||0).toLocaleString('es-MX') + pct(cnt['Alerta']||0), 'var(--alerta)') +
+    k('Enrutar', (cnt['Enrutar']||0).toLocaleString('es-MX') + pct(cnt['Enrutar']||0), 'var(--optimo)') +
+    k('Captura volumen', (cnt['Captura volumen']||0).toLocaleString('es-MX')) +
+    k('Revisar / sin tarifario', ((cnt['Revisar']||0) + (cnt['Sin tarifario']||0)).toLocaleString('es-MX')) +
+    k('Venta en Cancelar', fmtMoney(ventaRiesgo)) +
+    k('Costo envío en Cancelar', fmtMoney(costoRiesgo));
+  document.getElementById('kpiCardAl').style.display = 'block';
+}
+
+function renderTableAl(){
+  const list = filteredAlerts();
+  const pages = Math.max(1, Math.ceil(list.length / ALERT_PAGE_SIZE));
+  if(alertPage >= pages) alertPage = pages - 1;
+  const slice = list.slice(alertPage * ALERT_PAGE_SIZE, (alertPage + 1) * ALERT_PAGE_SIZE);
+  const def = alDefaultVol();
+  document.getElementById('bodyAl').innerHTML = slice.map(r => {
+    const i = ALERT_ROWS.indexOf(r);
+    return `<tr>
+      <td>${r.pedido}</td><td>${r.guia || '-'}</td><td>${r.carrier || '-'}</td>
+      <td>${fmtMoney(r.venta)}</td>
+      <td>${r.tienda}${r.orig ? `<div class="muted">${r.orig.nombre}</div>` : ''}</td>
+      <td>${r.cp}</td>
+      <td>${r.km !== null ? r.km.toFixed(1) + ' km' : '-'}</td>
+      <td>${r.prov ? `${r.prov} <span class="dc-tag">${r.tarifario}</span>` : '-'}</td>
+      <td>${r.precio !== null ? fmtMoney(r.precio) : '-'}</td>
+      <td><input type="number" class="volIn" data-i="${i}" step="0.001" min="0" value="${r.volManual !== null ? r.volManual : ''}" placeholder="${def || 'M3'}" style="width:85px;"></td>
+      <td>${r.cot !== null ? fmtMoney(r.cot) : '-'}</td>
+      <td>${r.var !== null ? (r.var*100).toFixed(1) + '%' : '-'}</td>
+      <td><span class="badge ${ACCION_CLS[r.accion] || 'neutral'}">${r.accion}</span>${r.nota ? `<div class="muted">${r.nota}</div>` : ''}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="13" class="muted">Sin registros para el filtro.</td></tr>';
+  document.getElementById('pageAl').textContent = `Página ${alertPage + 1} de ${pages} · ${list.length.toLocaleString('es-MX')} registros`;
+  document.getElementById('tableCardAl').style.display = 'block';
+  document.querySelectorAll('#bodyAl .volIn').forEach(inp => inp.addEventListener('change', () => {
+    const r = ALERT_ROWS[+inp.dataset.i];
+    const v = parseFloat(inp.value);
+    r.volManual = isNaN(v) || v <= 0 ? null : v;
+    evalAlert(r);
+    renderKpisAl();
+    renderTableAl();
+  }));
+}
+
+function reevalAllAl(){
+  if(!ALERT_ROWS.length) return;
+  ALERT_ROWS.forEach(evalAlert);
+  renderKpisAl();
+  renderTableAl();
+}
+
+document.getElementById('fileInputConcilia').addEventListener('change', (e) => {
+  alertFiles = Array.from(e.target.files || []);
+  document.getElementById('filesAl').textContent = alertFiles.length ? `${alertFiles.length} archivo(s): ${alertFiles.map(f => f.name).join(', ')}` : '';
+  document.getElementById('btnProcesarAl').disabled = !alertFiles.length;
+});
+
+document.getElementById('btnDetenerAl').addEventListener('click', () => { alertStop = true; });
+
+document.getElementById('btnProcesarAl').addEventListener('click', async () => {
+  if(alertRunning) return;
+  const statusEl = document.getElementById('statusAl');
+  if(!alertFiles.length){ statusEl.textContent = 'Sube el archivo de pedidos (.xlsx).'; statusEl.className = 'status err'; return; }
+  if(!STORES.length || !CP_CATALOG.size || !TARIFAS.size){
+    statusEl.textContent = 'Faltan bases: se necesitan Tiendas, Catálogo CP y Tarifario cargados.'; statusEl.className = 'status err'; return;
+  }
+  alertRunning = true; alertStop = false;
+  document.getElementById('btnProcesarAl').disabled = true;
+  document.getElementById('btnDetenerAl').style.display = 'inline-block';
+  statusEl.className = 'status';
+  const rows = [];
+  try{
+    // 1) Lectura del Excel de pedidos
+    for(const file of alertFiles){
+      statusEl.innerHTML = `<span class="spinner"></span> Leyendo ${file.name}...`;
+      const wb = XLSX.read(new Uint8Array(await file.arrayBuffer()), {type:'array'});
+      parsePedidosSheet(wb.Sheets[wb.SheetNames[0]]).forEach(r => rows.push(r));
+    }
+    if(!rows.length) throw new Error('No hay registros con tienda y CP válidos.');
+
+    // 2) Origen / destino
+    const origenes = buildOrigenMap();
+    rows.forEach(r => { r.orig = origenes.get(r.tienda) || null; r.dest = CP_CATALOG.get(r.cp) || null; });
+
+    // 3) Rutas OSRM (una por par tienda-CP, con caché)
+    const pend = new Map(); // origKey -> {orig, dests: Map(destKey -> dest)}
+    rows.forEach(r => {
+      if(!r.orig || !r.dest) return;
+      const ck = coordKey(r.orig, r.dest);
+      if(OSRM_CACHE.has(ck)) return;
+      const ok = `${r.orig.lat},${r.orig.lng}`;
+      if(!pend.has(ok)) pend.set(ok, {orig: r.orig, dests: new Map()});
+      pend.get(ok).dests.set(`${r.dest.lat},${r.dest.lng}`, r.dest);
+    });
+    const lotes = [];
+    pend.forEach(p => {
+      const ds = [...p.dests.values()];
+      for(let i=0; i<ds.length; i+=50) lotes.push({orig: p.orig, dests: ds.slice(i, i+50)});
+    });
+    const fallidos = new Set();
+    for(let i=0; i<lotes.length; i++){
+      if(alertStop) break;
+      statusEl.innerHTML = `<span class="spinner"></span> Calculando rutas OSRM: ${i+1} de ${lotes.length}...`;
+      const L = lotes[i];
+      const res = await osrmTable(L.orig, L.dests);
+      L.dests.forEach((d,j) => {
+        const ck = coordKey(L.orig, d);
+        if(res && res[j]) OSRM_CACHE.set(ck, [res[j].km, res[j].min]);
+        else fallidos.add(ck);
+      });
+      if(i % 10 === 9) saveOsrmCache();
+      if(i < lotes.length - 1) await sleep(1100);
+    }
+    saveOsrmCache();
+
+    rows.forEach(r => {
+      if(!r.orig || !r.dest) return;
+      const ck = coordKey(r.orig, r.dest);
+      const c = OSRM_CACHE.get(ck);
+      if(c){ r.km = c[0]; r.min = c[1]; }
+      else r.routeFail = fallidos.has(ck);
+    });
+
+    // 4) Cotización y acción
+    ALERT_ROWS = rows;
+    alertPage = 0;
+    ALERT_ROWS.forEach(evalAlert);
+    renderKpisAl();
+    renderTableAl();
+    statusEl.textContent = (alertStop ? 'Detenido: algunas rutas quedaron pendientes. ' : 'Listo: ') + `${rows.length.toLocaleString('es-MX')} pedidos procesados.`;
+    statusEl.className = alertStop ? 'status err' : 'status ok';
+  }catch(err){
+    statusEl.textContent = 'Error: ' + err.message;
+    statusEl.className = 'status err';
+  }
+  alertRunning = false;
+  document.getElementById('btnProcesarAl').disabled = !alertFiles.length;
+  document.getElementById('btnDetenerAl').style.display = 'none';
+  renderReqAl();
+});
+
+document.getElementById('volDefaultAl').addEventListener('change', reevalAllAl);
+document.getElementById('umbralAl').addEventListener('change', reevalAllAl);
+document.getElementById('accionFilterAl').addEventListener('change', () => { alertPage = 0; renderTableAl(); });
+document.getElementById('searchAl').addEventListener('input', () => { alertPage = 0; renderTableAl(); });
+document.getElementById('prevAl').addEventListener('click', () => { if(alertPage > 0){ alertPage--; renderTableAl(); } });
+document.getElementById('nextAl').addEventListener('click', () => { alertPage++; renderTableAl(); });
+
+document.getElementById('btnExportAl').addEventListener('click', () => {
+  const list = filteredAlerts();
+  if(!list.length) return;
+  const data = list.map(r => ({
+    Pedido: r.pedido, Guia: r.guia, Carrier: r.carrier, Venta: r.venta,
+    Tienda: r.tienda, Nombre_Tienda: r.orig ? r.orig.nombre : '', CP: r.cp,
+    Dist_Km_OSRM: r.km !== null ? +r.km.toFixed(2) : '', Proveedor: r.prov, Tarifario: r.tarifario, Rango: r.rango,
+    Precio_Unitario: r.precio !== null ? r.precio : '', Vol_M3: r.vol || '', Cotizacion: r.cot !== null ? +r.cot.toFixed(2) : '',
+    Var: r.var !== null ? +(r.var*100).toFixed(2) : '', Accion: r.accion, Nota: r.nota
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Alertas');
+  XLSX.writeFile(wb, 'Alerta_logistica_bt.xlsx');
+});
+
+loadOsrmCache();
+
+
+// ---------- Init ----------
+loadPersisted();
+renderStoreTable();
+renderStoreTableBT();
+renderTarifaTable();
+renderReqAl();
+loadCPCatalogIDB();
+try{
+  const rememberedUrl = localStorage.getItem(LS_REMOTE_URL);
+  if(rememberedUrl){
+    document.getElementById('remoteUrlInput').value = rememberedUrl;
+    document.getElementById('rememberRemoteUrl').checked = true;
+    loadFromRemoteUrl(rememberedUrl, 'statusRemote');
+  }
+}catch(e){}
+</script>
+
+</body>
+</html>
